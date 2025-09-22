@@ -55,7 +55,8 @@ export default function Sidebar({
   }
 
   const handlePlayAudio = () => {
-    if (!entry?.metadata.audioFile) return
+    const audioUrl = entry?.metadata.audioUrl || (entry?.metadata.audioFile ? `/audio/${entry.metadata.audioFile}` : null)
+    if (!audioUrl) return
 
     if (audio) {
       if (isPlaying) {
@@ -66,7 +67,7 @@ export default function Sidebar({
         setIsPlaying(true)
       }
     } else {
-      const newAudio = new Audio(`/audio/${entry.metadata.audioFile}`)
+      const newAudio = new Audio(audioUrl)
       newAudio.onended = () => setIsPlaying(false)
       newAudio.onpause = () => setIsPlaying(false)
       newAudio.play()
@@ -116,10 +117,10 @@ export default function Sidebar({
           </div>
 
           {/* Image Display */}
-          {entry.metadata.type === 'image' && entry.metadata.imageFile && (
+          {entry.metadata.type === 'image' && (entry.metadata.imageUrl || entry.metadata.imageFile) && (
             <div className="mb-4">
               <img
-                src={`/images/${entry.metadata.imageFile}`}
+                src={entry.metadata.imageUrl || `/images/${entry.metadata.imageFile}`}
                 alt="Entry image"
                 className="w-full h-48 object-cover rounded border"
               />
@@ -127,7 +128,7 @@ export default function Sidebar({
           )}
 
           {/* Audio Player */}
-          {entry.metadata.type === 'audio' && entry.metadata.audioFile && (
+          {entry.metadata.type === 'audio' && (entry.metadata.audioUrl || entry.metadata.audioFile) && (
             <div className="mb-4">
               <button
                 onClick={handlePlayAudio}
@@ -221,9 +222,9 @@ export default function Sidebar({
                     )}
                   </div>
 
-                  {comment.metadata.type === 'image' && comment.metadata.imageFile && (
+                  {comment.metadata.type === 'image' && (comment.metadata.imageUrl || comment.metadata.imageFile) && (
                     <img
-                      src={`/images/${comment.metadata.imageFile}`}
+                      src={comment.metadata.imageUrl || `/images/${comment.metadata.imageFile}`}
                       alt="Comment image"
                       className="w-full h-24 object-cover rounded mb-2"
                     />

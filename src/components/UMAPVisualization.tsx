@@ -152,13 +152,13 @@ function UMAPVisualization({
           .attr('stroke-width', 2)
           .attr('rx', 4)
 
-        if (entry.metadata.imageFile) {
+        if (entry.metadata.imageFile || entry.metadata.imageUrl) {
           node.append('image')
             .attr('x', -10)
             .attr('y', -10)
             .attr('width', 20)
             .attr('height', 20)
-            .attr('href', `/images/${entry.metadata.imageFile}`)
+            .attr('href', entry.metadata.imageUrl || `/images/${entry.metadata.imageFile}`)
             .attr('clip-path', 'inset(0% round 2px)')
         }
       } else if (entry.metadata.type === 'audio') {
@@ -484,7 +484,7 @@ function UMAPVisualization({
       .attr('y', d => d.entry.parentId ? -8 : -10)
       .attr('width', d => d.entry.parentId ? 16 : 20)
       .attr('height', d => d.entry.parentId ? 16 : 20)
-      .attr('href', d => `/images/${d.entry.metadata.imageFile}`)
+      .attr('href', d => d.entry.metadata.imageUrl || `/images/${d.entry.metadata.imageFile}`)
       .attr('clip-path', 'inset(0% round 2px)')
       .attr('opacity', d => d.entry.parentId ? 0.7 : 1) // More transparent for comments
 

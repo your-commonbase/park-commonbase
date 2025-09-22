@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Settings } from 'lucide-react'
+import { X, Settings, Upload } from 'lucide-react'
 import AudioRecorder from '@/components/AudioRecorder'
+import { useUploadThing } from '@/lib/uploadthing-client'
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -44,6 +45,35 @@ export default function SettingsModal({
   const [authorName, setAuthorName] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [csvData, setCsvData] = useState('')
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string>('')
+  const [uploadedAudioUrl, setUploadedAudioUrl] = useState<string>('')
+  const [isUploading, setIsUploading] = useState(false)
+
+  const { startUpload: startImageUpload } = useUploadThing('imageUploader', {
+    onClientUploadComplete: (res) => {
+      if (res && res[0]) {
+        setUploadedImageUrl(res[0].url)
+        setIsUploading(false)
+      }
+    },
+    onUploadError: (error) => {
+      console.error('Image upload error:', error)
+      setIsUploading(false)
+    },
+  })
+
+  const { startUpload: startAudioUpload } = useUploadThing('audioUploader', {
+    onClientUploadComplete: (res) => {
+      if (res && res[0]) {
+        setUploadedAudioUrl(res[0].url)
+        setIsUploading(false)
+      }
+    },
+    onUploadError: (error) => {
+      console.error('Audio upload error:', error)
+      setIsUploading(false)
+    },
+  })
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -83,7 +113,7 @@ export default function SettingsModal({
 
   const handleAddEntry = async (e: React.FormEvent) => {
     e.preventDefault()
-    if ((!newEntryText.trim() && !selectedFile && !csvData.trim()) || isAddingEntry) return
+    if ((!newEntryText.trim() && !selectedFile && !uploadedImageUrl && !uploadedAudioUrl && !csvData.trim()) || isAddingEntry) return
 
     try {
       if (activeUploadTab === 'text') {
@@ -95,16 +125,54 @@ export default function SettingsModal({
           },
           collection,
         }, 'text')
-      } else if ((activeUploadTab === 'image' || activeUploadTab === 'audio') && selectedFile) {
-        const formData = new FormData()
-        formData.append(activeUploadTab, selectedFile)
-        formData.append('collection', collection)
-        if (authorName.trim()) {
-          formData.append('metadata', JSON.stringify({
-            author: { name: authorName.trim() }
-          }))
+      } else if (activeUploadTab === 'image') {
+        if (uploadedImageUrl) {
+          // Use UploadThing URL
+          const formData = new FormData()
+          formData.append('uploadthingUrl', uploadedImageUrl)
+          formData.append('collection', collection)
+          if (authorName.trim()) {
+            formData.append('metadata', JSON.stringify({
+              author: { name: authorName.trim() }
+            }))
+          }
+          await onAddEntry(formData, 'image')
+        } else if (selectedFile) {
+          // Fallback to direct upload
+          const formData = new FormData()
+          formData.append('image', selectedFile)
+          formData.append('collection', collection)
+          if (authorName.trim()) {
+            formData.append('metadata', JSON.stringify({
+              author: { name: authorName.trim() }
+            }))
+          }
+          await onAddEntry(formData, 'image')
         }
-        await onAddEntry(formData, activeUploadTab)
+      } else if (activeUploadTab === 'audio') {
+        if (uploadedAudioUrl) {
+          // Use UploadThing URL
+          const formData = new FormData()
+          formData.append('uploadthingUrl', uploadedAudioUrl)
+          formData.append('collection', collection)
+          if (authorName.trim()) {
+            formData.append('metadata', JSON.stringify({
+              author: { name: authorName.trim() }
+            }))
+          }
+          await onAddEntry(formData, 'audio')
+        } else if (selectedFile) {
+          // Fallback to direct upload
+          const formData = new FormData()
+          formData.append('audio', selectedFile)
+          formData.append('collection', collection)
+          if (authorName.trim()) {
+            formData.append('metadata', JSON.stringify({
+              author: { name: authorName.trim() }
+            }))
+          }
+          await onAddEntry(formData, 'audio')
+        }
       } else if (activeUploadTab === 'csv') {
         await onAddEntry({
           csvData,
@@ -116,15 +184,71 @@ export default function SettingsModal({
       setAuthorName('')
       setSelectedFile(null)
       setCsvData('')
+      setUploadedImageUrl('')
+      setUploadedAudioUrl('')
       onClose() // Auto close modal after adding entry
     } catch (error) {
       console.error('Error adding entry:', error)
     }
   }
 
-  const handleRecordingComplete = (audioBlob: Blob, filename: string) => {
+  const handleRecordingComplete = async (audioBlob: Blob, filename: string) => {
     const audioFile = new File([audioBlob], filename, { type: audioBlob.type })
     setSelectedFile(audioFile)
+
+    // Directly create the audio entry with temporary file (bypass UploadThing for recordings)
+    setIsUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('audio', audioFile)
+      formData.append('collection', collection)
+      if (authorName.trim()) {
+        formData.append('metadata', JSON.stringify({
+          author: { name: authorName.trim() }
+        }))
+      }
+
+      await onAddEntry(formData, 'audio')
+
+      // Reset states after successful entry creation
+      setSelectedFile(null)
+      setAuthorName('')
+      setIsUploading(false)
+      onClose() // Close modal after successful recording and transcription
+    } catch (error) {
+      console.error('Failed to create audio entry from recording:', error)
+      setIsUploading(false)
+    }
+  }
+
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setSelectedFile(file)
+    setIsUploading(true)
+
+    try {
+      await startImageUpload([file])
+    } catch (error) {
+      console.error('Failed to start image upload:', error)
+      setIsUploading(false)
+    }
+  }
+
+  const handleAudioFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setSelectedFile(file)
+    setIsUploading(true)
+
+    try {
+      await startAudioUpload([file])
+    } catch (error) {
+      console.error('Failed to start audio upload:', error)
+      setIsUploading(false)
+    }
   }
 
   if (!isOpen) return null
@@ -366,13 +490,26 @@ export default function SettingsModal({
                     <input
                       type="file"
                       accept="image/*"
-                      onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                      onChange={handleImageFileChange}
                       className="w-full p-3 border border-gray-300 rounded"
+                      disabled={isUploading}
                     />
-                    {selectedFile && (
+                    {isUploading && (
+                      <div className="flex items-center mt-2 text-blue-600">
+                        <Upload className="animate-spin mr-2" size={16} />
+                        <p className="text-sm">Uploading to UploadThing...</p>
+                      </div>
+                    )}
+                    {uploadedImageUrl && (
+                      <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
+                        <p className="text-sm text-green-800">✓ Image uploaded successfully to UploadThing</p>
+                        <img src={uploadedImageUrl} alt="Uploaded" className="mt-1 max-w-32 h-auto rounded" />
+                      </div>
+                    )}
+                    {selectedFile && !uploadedImageUrl && !isUploading && (
                       <p className="text-sm text-gray-600 mt-2">Selected: {selectedFile.name}</p>
                     )}
-                    <p className="text-sm text-gray-600 mt-2">Image will be automatically captioned using AI</p>
+                    <p className="text-sm text-gray-600 mt-2">Images are hosted on UploadThing and will be automatically captioned using AI</p>
                   </div>
                 )}
 
@@ -383,10 +520,26 @@ export default function SettingsModal({
                       <input
                         type="file"
                         accept="audio/*,.m4a,.mp3,.wav,.aac,.ogg,.flac"
-                        onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                        onChange={handleAudioFileChange}
                         className="w-full p-3 border border-gray-300 rounded"
+                        disabled={isUploading}
                       />
-                      {selectedFile && (
+                      {isUploading && (
+                        <div className="flex items-center mt-2 text-blue-600">
+                          <Upload className="animate-spin mr-2" size={16} />
+                          <p className="text-sm">Uploading to UploadThing...</p>
+                        </div>
+                      )}
+                      {uploadedAudioUrl && (
+                        <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
+                          <p className="text-sm text-green-800">✓ Audio uploaded successfully to UploadThing</p>
+                          <audio controls className="mt-1 w-full max-w-xs">
+                            <source src={uploadedAudioUrl} />
+                            Your browser does not support the audio element.
+                          </audio>
+                        </div>
+                      )}
+                      {selectedFile && !uploadedAudioUrl && !isUploading && (
                         <p className="text-sm text-gray-600 mt-2">Selected: {selectedFile.name}</p>
                       )}
                     </div>
@@ -405,7 +558,7 @@ export default function SettingsModal({
                       disabled={isAddingEntry}
                     />
 
-                    <p className="text-sm text-gray-600">Audio will be automatically transcribed using AI</p>
+                    <p className="text-sm text-gray-600">Audio files are hosted on UploadThing and will be automatically transcribed using AI</p>
                   </div>
                 )}
 
@@ -441,13 +594,15 @@ export default function SettingsModal({
                   type="submit"
                   disabled={
                     (activeUploadTab === 'text' && !newEntryText.trim()) ||
-                    ((activeUploadTab === 'image' || activeUploadTab === 'audio') && !selectedFile) ||
+                    (activeUploadTab === 'image' && !uploadedImageUrl && !selectedFile) ||
+                    (activeUploadTab === 'audio' && !uploadedAudioUrl && !selectedFile) ||
                     (activeUploadTab === 'csv' && !csvData.trim()) ||
-                    isAddingEntry
+                    isAddingEntry ||
+                    isUploading
                   }
                   className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
                 >
-                  {isAddingEntry ? 'Processing...' : `Add ${activeUploadTab === 'csv' ? 'Batch' : activeUploadTab.charAt(0).toUpperCase() + activeUploadTab.slice(1)}`}
+                  {isUploading ? 'Uploading...' : isAddingEntry ? 'Processing...' : `Add ${activeUploadTab === 'csv' ? 'Batch' : activeUploadTab.charAt(0).toUpperCase() + activeUploadTab.slice(1)}`}
                 </button>
               </form>
             </div>

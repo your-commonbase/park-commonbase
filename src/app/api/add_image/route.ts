@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { captionImage, generateEmbedding } from '@/lib/openai'
-import { saveImageFile } from '@/lib/storage'
 import { validateApiKey } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
@@ -16,15 +15,30 @@ export async function POST(request: NextRequest) {
     const metadata = formData.get('metadata') ? JSON.parse(formData.get('metadata') as string) : {}
     const collection = (formData.get('collection') as string) || 'default'
     const parentId = formData.get('parentId') as string
+    const uploadthingUrl = formData.get('uploadthingUrl') as string
 
-    if (!imageFile) {
-      return NextResponse.json({ error: 'Image file is required' }, { status: 400 })
+    if (!imageFile && !uploadthingUrl) {
+      return NextResponse.json({ error: 'Image file or UploadThing URL is required' }, { status: 400 })
     }
 
-    const buffer = Buffer.from(await imageFile.arrayBuffer())
+    let buffer: Buffer
+    let imageUrl: string
+    let fileName: string | undefined
 
-    // Save the image file
-    const fileName = await saveImageFile(buffer, imageFile.name)
+    if (uploadthingUrl) {
+      // Use UploadThing URL directly
+      imageUrl = uploadthingUrl
+      // Fetch the image for AI processing
+      const response = await fetch(uploadthingUrl)
+      buffer = Buffer.from(await response.arrayBuffer())
+      fileName = undefined // No local file when using UploadThing
+    } else {
+      // Fallback for direct file upload (legacy)
+      const { saveImageFile } = await import('@/lib/storage')
+      buffer = Buffer.from(await imageFile.arrayBuffer())
+      fileName = await saveImageFile(buffer, imageFile.name)
+      imageUrl = `/images/${fileName}` // Local URL
+    }
 
     // Generate caption for the image
     const caption = await captionImage(buffer)
@@ -39,7 +53,8 @@ export async function POST(request: NextRequest) {
         metadata: {
           ...metadata,
           type: 'image',
-          imageFile: fileName,
+          imageUrl: imageUrl,
+          imageFile: fileName, // Keep for backward compatibility
         },
         embedding: JSON.stringify(embedding),
         collection,
@@ -73,6 +88,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       id: entry.id,
       caption,
+      imageUrl: imageUrl,
       imageFile: fileName,
       message: 'Image entry created successfully',
     })

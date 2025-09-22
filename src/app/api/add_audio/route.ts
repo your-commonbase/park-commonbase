@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { transcribeAudio, generateEmbedding } from '@/lib/openai'
-import { saveAudioFile } from '@/lib/storage'
 import { validateApiKey } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
@@ -16,18 +15,37 @@ export async function POST(request: NextRequest) {
     const metadata = formData.get('metadata') ? JSON.parse(formData.get('metadata') as string) : {}
     const collection = (formData.get('collection') as string) || 'default'
     const parentId = formData.get('parentId') as string
+    const uploadthingUrl = formData.get('uploadthingUrl') as string
 
-    if (!audioFile) {
-      return NextResponse.json({ error: 'Audio file is required' }, { status: 400 })
+    if (!audioFile && !uploadthingUrl) {
+      return NextResponse.json({ error: 'Audio file or UploadThing URL is required' }, { status: 400 })
     }
 
-    const buffer = Buffer.from(await audioFile.arrayBuffer())
+    let buffer: Buffer
+    let audioUrl: string
+    let fileName: string | undefined
+    let audioFileName: string
 
-    // Save the audio file
-    const fileName = await saveAudioFile(buffer, audioFile.name)
+    if (uploadthingUrl) {
+      // Use UploadThing URL directly
+      audioUrl = uploadthingUrl
+      // Fetch the audio for AI processing
+      const response = await fetch(uploadthingUrl)
+      buffer = Buffer.from(await response.arrayBuffer())
+      // Extract filename from URL or use default
+      audioFileName = uploadthingUrl.split('/').pop() || 'audio.mp3'
+      fileName = undefined // No local file when using UploadThing
+    } else {
+      // Fallback for direct file upload (legacy)
+      const { saveAudioFile } = await import('@/lib/storage')
+      buffer = Buffer.from(await audioFile.arrayBuffer())
+      fileName = await saveAudioFile(buffer, audioFile.name)
+      audioUrl = `/audio/${fileName}` // Local URL
+      audioFileName = audioFile.name
+    }
 
     // Transcribe the audio
-    const transcription = await transcribeAudio(buffer, audioFile.name)
+    const transcription = await transcribeAudio(buffer, audioFileName)
 
     // Generate embedding for the transcription
     const embedding = await generateEmbedding(transcription)
@@ -39,7 +57,8 @@ export async function POST(request: NextRequest) {
         metadata: {
           ...metadata,
           type: 'audio',
-          audioFile: fileName,
+          audioUrl: audioUrl,
+          audioFile: fileName, // Keep for backward compatibility
         },
         embedding: JSON.stringify(embedding),
         collection,
@@ -73,6 +92,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       id: entry.id,
       transcription,
+      audioUrl: audioUrl,
       audioFile: fileName,
       message: 'Audio entry created successfully',
     })
