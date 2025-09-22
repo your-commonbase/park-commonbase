@@ -539,20 +539,11 @@ function UMAPVisualization({
 
   return (
     <div className="relative w-full h-full">
-      {/* Collection name and dropdown */}
-      <div className="absolute top-4 left-4 z-10 flex items-center gap-3">
+      {/* Collection name only */}
+      <div className="absolute top-4 left-4 z-10">
         <h1 className="text-2xl font-bold text-foreground">
           {collection}
         </h1>
-        <select
-          value={collection}
-          onChange={(e) => onCollectionChange(e.target.value)}
-          className="px-3 py-1 border border-gray-300 rounded bg-background text-foreground text-sm"
-        >
-          {collections.map(col => (
-            <option key={col} value={col}>{col}</option>
-          ))}
-        </select>
       </div>
 
       {/* SVG visualization */}

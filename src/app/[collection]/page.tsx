@@ -5,8 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Cookies from 'js-cookie'
 import UMAPVisualization from '@/components/UMAPVisualization'
 import Sidebar from '@/components/Sidebar'
-import AdminLogin from '@/components/AdminLogin'
-import AudioRecorder from '@/components/AudioRecorder'
+import SettingsModal from '@/components/SettingsModal'
 
 interface Entry {
   id: string
@@ -30,17 +29,9 @@ export default function CollectionPage() {
   const [collection, setCollection] = useState(collectionParam || 'default')
   const [collections, setCollections] = useState<string[]>(['default'])
   const [isAdmin, setIsAdmin] = useState(false)
-  const [showAdminLogin, setShowAdminLogin] = useState(false)
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [apiKey] = useState(process.env.NEXT_PUBLIC_API_KEY || '')
-  const [newEntryText, setNewEntryText] = useState('')
-  const [authorName, setAuthorName] = useState('')
   const [isAddingEntry, setIsAddingEntry] = useState(false)
-  const [activeUploadTab, setActiveUploadTab] = useState<'text' | 'image' | 'audio' | 'csv'>('text')
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [csvData, setCsvData] = useState('')
-  const [showNewCollectionForm, setShowNewCollectionForm] = useState(false)
-  const [newCollectionName, setNewCollectionName] = useState('')
-  const [isCreatingCollection, setIsCreatingCollection] = useState(false)
   const [newlyAddedEntryId, setNewlyAddedEntryId] = useState<string | undefined>(undefined)
 
   // Check for admin cookie on page load
@@ -93,11 +84,11 @@ export default function CollectionPage() {
   }, [collection])
 
   const handleNodeClick = (entry: Entry) => {
-    // If sidebar is open, close it regardless of which entry is clicked
-    if (selectedEntry) {
+    // If sidebar is open and it's the same entry, close it
+    if (selectedEntry && selectedEntry.id === entry.id) {
       setSelectedEntry(null)
     } else {
-      // If sidebar is closed, open it with the clicked entry
+      // Always open the clicked entry (even if another entry was selected)
       setSelectedEntry(entry)
     }
   }
@@ -119,8 +110,7 @@ export default function CollectionPage() {
 
       if (response.ok) {
         setIsAdmin(true)
-        setShowAdminLogin(false)
-        Cookies.set('park-admin', 'true', { expires: 7 }) // Cookie expires in 7 days
+        Cookies.set('park-admin', 'true', { expires: 7 })
         return true
       } else {
         return false
@@ -129,6 +119,11 @@ export default function CollectionPage() {
       console.error('Admin login error:', error)
       return false
     }
+  }
+
+  const handleAdminLogout = () => {
+    setIsAdmin(false)
+    Cookies.remove('park-admin')
   }
 
   const handleAddComment = async (parentId: string, content: string) => {
@@ -215,105 +210,63 @@ export default function CollectionPage() {
     }
   }
 
-  const handleAddEntry = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if ((!newEntryText.trim() && !selectedFile && !csvData.trim()) || isAddingEntry) return
-
+  const handleAddEntry = async (data: any, type: 'text' | 'image' | 'audio' | 'csv') => {
     setIsAddingEntry(true)
-    const serverApiKey = 'testkey' // Match the server-side API key
+    const serverApiKey = 'testkey'
 
     try {
       let response
       let result
 
-      if (activeUploadTab === 'text') {
-        console.log('Adding text entry:', newEntryText)
+      if (type === 'text') {
         response = await fetch('/api/add', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'x-api-key': serverApiKey,
           },
-          body: JSON.stringify({
-            data: newEntryText,
-            collection,
-            metadata: {
-              type: 'text',
-              author: authorName.trim() ? { name: authorName.trim() } : undefined,
-            },
-          }),
+          body: JSON.stringify(data),
         })
         result = await response.json()
-      } else if (activeUploadTab === 'image' && selectedFile) {
-        console.log('Adding image entry:', selectedFile.name)
-        const formData = new FormData()
-        formData.append('image', selectedFile)
-        formData.append('collection', collection)
-        if (authorName.trim()) {
-          formData.append('metadata', JSON.stringify({
-            author: { name: authorName.trim() }
-          }))
-        }
-
+      } else if (type === 'image') {
         response = await fetch('/api/add_image', {
           method: 'POST',
           headers: {
             'x-api-key': serverApiKey,
           },
-          body: formData,
+          body: data,
         })
         result = await response.json()
-      } else if (activeUploadTab === 'audio' && selectedFile) {
-        console.log('Adding audio entry:', selectedFile.name)
-        const formData = new FormData()
-        formData.append('audio', selectedFile)
-        formData.append('collection', collection)
-        if (authorName.trim()) {
-          formData.append('metadata', JSON.stringify({
-            author: { name: authorName.trim() }
-          }))
-        }
-
+      } else if (type === 'audio') {
         response = await fetch('/api/add_audio', {
           method: 'POST',
           headers: {
             'x-api-key': serverApiKey,
           },
-          body: formData,
+          body: data,
         })
         result = await response.json()
-      } else if (activeUploadTab === 'csv') {
-        console.log('Processing CSV data...')
-        response = await handleCSVUpload()
-        result = response
+      } else if (type === 'csv') {
+        response = await fetch('/api/batch_upload', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': serverApiKey,
+          },
+          body: JSON.stringify(data),
+        })
+        result = await response.json()
       }
 
-      console.log('Add entry response:', result)
-
       if (response && response.ok) {
-        console.log('Entry added successfully, refreshing data...')
-
-        // Clear form
-        setNewEntryText('')
-        setAuthorName('')
-        setSelectedFile(null)
-        setCsvData('')
-
-        // Track newly added entry for highlighting
         if (result && result.id) {
           setNewlyAddedEntryId(result.id)
-          // Clear highlight after 3 seconds
           setTimeout(() => setNewlyAddedEntryId(undefined), 3000)
         }
 
-        // Add a small delay to ensure processing is complete
         await new Promise(resolve => setTimeout(resolve, 1000))
-
-        // Refresh entries
         const updatedEntries = await fetch(`/api/collection/${collection}`).then(res => res.json())
         setEntries(updatedEntries)
-      } else {
-        console.error('Failed to add entry:', result)
       }
     } catch (error) {
       console.error('Error adding entry:', error)
@@ -322,319 +275,52 @@ export default function CollectionPage() {
     }
   }
 
-  const handleCSVUpload = async () => {
-    if (!csvData.trim()) return { ok: false }
 
+  const handleCreateCollection = async (name: string) => {
     const serverApiKey = 'testkey'
 
-    try {
-      const response = await fetch('/api/batch_upload', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': serverApiKey,
-        },
-        body: JSON.stringify({
-          csvData: csvData,
-          collection,
-        }),
+    const response = await fetch('/api/collections', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': serverApiKey,
+      },
+      body: JSON.stringify({ name }),
+    })
+
+    const result = await response.json()
+
+    if (response.ok) {
+      const updatedCollections = await fetch('/api/collections', {
+        headers: { 'x-api-key': serverApiKey },
       })
+        .then(res => res.json())
+        .then(data => data.map((col: any) => col.name))
 
-      const result = await response.json()
-
-      if (response.ok) {
-        console.log(`Batch upload completed: ${result.processed} entries processed, ${result.errors} errors`)
-        if (result.errors > 0) {
-          console.warn('Batch upload errors:', result.errors)
-        }
-      }
-
-      return response
-    } catch (error) {
-      console.error('Error in CSV upload:', error)
-      return { ok: false }
+      setCollections(updatedCollections)
+      router.push(`/${name}`)
+    } else {
+      throw new Error(result.error || 'Failed to create collection')
     }
   }
 
-  const handleCreateCollection = async () => {
-    if (!newCollectionName.trim() || isCreatingCollection) return
-
-    setIsCreatingCollection(true)
-    const serverApiKey = 'testkey'
-
-    try {
-      const response = await fetch('/api/collections', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': serverApiKey,
-        },
-        body: JSON.stringify({
-          name: newCollectionName.trim(),
-        }),
-      })
-
-      const result = await response.json()
-
-      if (response.ok) {
-        console.log('Collection created successfully:', result)
-
-        // Clear form
-        setNewCollectionName('')
-        setShowNewCollectionForm(false)
-
-        // Refresh collections list
-        fetch('/api/collections', {
-          headers: {
-            'x-api-key': serverApiKey,
-          },
-        })
-          .then(res => res.json())
-          .then(data => {
-            if (Array.isArray(data)) {
-              const collectionNames = data.map(col => col.name)
-              setCollections(collectionNames)
-            }
-          })
-          .catch(error => {
-            console.error('Error refreshing collections:', error)
-          })
-
-        // Navigate to the new collection
-        router.push(`/${newCollectionName.trim()}`)
-      } else {
-        console.error('Failed to create collection:', result)
-        alert(result.error || 'Failed to create collection')
-      }
-    } catch (error) {
-      console.error('Error creating collection:', error)
-      alert('Error creating collection')
-    } finally {
-      setIsCreatingCollection(false)
-    }
-  }
-
-  const handleRecordingComplete = (audioBlob: Blob, filename: string) => {
-    // Convert Blob to File
-    const audioFile = new File([audioBlob], filename, { type: audioBlob.type })
-    setSelectedFile(audioFile)
-    console.log('Recording completed:', filename, audioFile.type, audioFile.size)
-  }
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
-      {/* Admin Login Button */}
-      {!isAdmin && (
-        <button
-          onClick={() => setShowAdminLogin(true)}
-          className="absolute top-4 right-4 z-50 px-3 py-1 bg-gray-800 text-white text-sm rounded hover:bg-gray-700 transition-colors"
-        >
-          Admin
-        </button>
-      )}
-
-      {/* Admin Status */}
-      {isAdmin && (
-        <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
-          <div className="px-3 py-1 bg-green-600 text-white text-sm rounded">
-            Admin Mode
-          </div>
-          <button
-            onClick={() => {
-              setIsAdmin(false)
-              Cookies.remove('park-admin')
-            }}
-            className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
-          >
-            Logout
-          </button>
-        </div>
-      )}
-
-      {/* Admin Upload Panel */}
-      {isAdmin && (
-        <div className="absolute top-16 right-4 z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-96">
-          <h3 className="text-sm font-medium mb-4 text-gray-800">Add Entry</h3>
-
-          {/* Tabs */}
-          <div className="flex mb-4 border-b">
-            {(['text', 'image', 'audio', 'csv'] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveUploadTab(tab)}
-                className={`px-3 py-1 text-xs font-medium capitalize ${
-                  activeUploadTab === tab
-                    ? 'border-b-2 border-blue-600 text-blue-600'
-                    : 'text-gray-600 hover:text-gray-800'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-
-          <form onSubmit={handleAddEntry}>
-            {/* Text Upload */}
-            {activeUploadTab === 'text' && (
-              <div className="space-y-3">
-                <textarea
-                  value={newEntryText}
-                  onChange={(e) => setNewEntryText(e.target.value)}
-                  placeholder="Enter your text here..."
-                  className="w-full p-2 border border-gray-300 rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white text-gray-900 placeholder-gray-500"
-                  rows={3}
-                />
-              </div>
-            )}
-
-            {/* Image Upload */}
-            {activeUploadTab === 'image' && (
-              <div className="space-y-3">
-                <div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                    className="w-full p-2 border border-gray-300 rounded text-sm bg-white text-gray-900"
-                  />
-                  {selectedFile && (
-                    <p className="text-xs text-gray-600 mt-1">Selected: {selectedFile.name}</p>
-                  )}
-                </div>
-                <p className="text-xs text-gray-600">Image will be automatically captioned using AI</p>
-              </div>
-            )}
-
-            {/* Audio Upload */}
-            {activeUploadTab === 'audio' && (
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Choose File</label>
-                  <input
-                    type="file"
-                    accept="audio/*,.m4a,.mp3,.wav,.aac,.ogg,.flac"
-                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                    className="w-full p-2 border border-gray-300 rounded text-sm bg-white text-gray-900"
-                  />
-                  {selectedFile && (
-                    <p className="text-xs text-gray-600 mt-1">Selected: {selectedFile.name}</p>
-                  )}
-                </div>
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300" />
-                  </div>
-                  <div className="relative flex justify-center text-xs">
-                    <span className="bg-white px-2 text-gray-500">OR</span>
-                  </div>
-                </div>
-
-                <AudioRecorder
-                  onRecordingComplete={handleRecordingComplete}
-                  disabled={isAddingEntry}
-                />
-
-                <p className="text-xs text-gray-600">Audio (including iPhone/iPad voice memos) will be automatically transcribed using AI</p>
-              </div>
-            )}
-
-            {/* CSV Upload */}
-            {activeUploadTab === 'csv' && (
-              <div className="space-y-3">
-                <textarea
-                  value={csvData}
-                  onChange={(e) => setCsvData(e.target.value)}
-                  placeholder="Paste CSV data here (data,author columns)..."
-                  className="w-full p-2 border border-gray-300 rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white text-gray-900 placeholder-gray-500"
-                  rows={4}
-                />
-                <p className="text-xs text-gray-600">Format: Each row should have 'data' and 'author' columns</p>
-              </div>
-            )}
-
-            {/* Common Author Field */}
-            {activeUploadTab !== 'csv' && (
-              <div className="mt-3">
-                <input
-                  type="text"
-                  value={authorName}
-                  onChange={(e) => setAuthorName(e.target.value)}
-                  placeholder="Author name (optional)"
-                  className="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-500"
-                />
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={
-                (activeUploadTab === 'text' && !newEntryText.trim()) ||
-                ((activeUploadTab === 'image' || activeUploadTab === 'audio') && !selectedFile) ||
-                (activeUploadTab === 'csv' && !csvData.trim()) ||
-                isAddingEntry
-              }
-              className="w-full mt-4 px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-            >
-              {isAddingEntry ? 'Processing...' : `Add ${activeUploadTab === 'csv' ? 'Batch' : activeUploadTab.charAt(0).toUpperCase() + activeUploadTab.slice(1)}`}
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* Collection Management Panel */}
-      {isAdmin && (
-        <div className="absolute top-16 left-4 z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-80">
-          <h3 className="text-sm font-medium mb-4 text-gray-800">Collections</h3>
-
-          {!showNewCollectionForm ? (
-            <div className="space-y-2">
-              <p className="text-xs text-gray-600">Current: {collection}</p>
-              <button
-                onClick={() => setShowNewCollectionForm(true)}
-                className="w-full px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
-              >
-                + New Collection
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <input
-                type="text"
-                value={newCollectionName}
-                onChange={(e) => setNewCollectionName(e.target.value)}
-                placeholder="Collection name"
-                className="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white text-gray-900 placeholder-gray-500"
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleCreateCollection()
-                  }
-                }}
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={handleCreateCollection}
-                  disabled={!newCollectionName.trim() || isCreatingCollection}
-                  className="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                >
-                  {isCreatingCollection ? 'Creating...' : 'Create'}
-                </button>
-                <button
-                  onClick={() => {
-                    setShowNewCollectionForm(false)
-                    setNewCollectionName('')
-                  }}
-                  className="px-3 py-2 bg-gray-500 text-white text-sm rounded hover:bg-gray-600 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-              <p className="text-xs text-gray-600">Press Enter to create or click Create</p>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Settings Button */}
+      <button
+        onClick={() => setShowSettingsModal(true)}
+        className="absolute top-4 right-4 z-50 p-3 bg-white border border-gray-300 rounded-lg shadow-md hover:shadow-lg transition-all hover:bg-gray-50"
+        title="Settings"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        {isAdmin && (
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+        )}
+      </button>
 
       {/* Main Visualization */}
       <UMAPVisualization
@@ -657,10 +343,20 @@ export default function CollectionPage() {
         isAdmin={isAdmin}
       />
 
-      {/* Admin Login Modal */}
-      {showAdminLogin && (
-        <AdminLogin onLogin={handleAdminLogin} />
-      )}
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        isAdmin={isAdmin}
+        onAdminLogin={handleAdminLogin}
+        onAdminLogout={handleAdminLogout}
+        collection={collection}
+        collections={collections}
+        onCollectionChange={handleCollectionChange}
+        onCreateCollection={handleCreateCollection}
+        onAddEntry={handleAddEntry}
+        isAddingEntry={isAddingEntry}
+      />
     </div>
   )
 }
