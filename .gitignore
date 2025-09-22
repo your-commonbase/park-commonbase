@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+public/audio/*
+!public/audio/.gitkeep
+public/images/*
+!public/images/.gitkeep
+prisma/dev.db

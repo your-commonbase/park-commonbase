@@ -1,36 +1,149 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Park Commonbase
 
-## Getting Started
+Park Commonbase is a web application that captures voice memos, images, and text notes from people at the park and visualizes them in a UMAP (Uniform Manifold Approximation and Projection) space. The application uses AI to process content and create meaningful connections between entries.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Multi-modal Input**: Accept text notes, voice recordings, and images
+- **AI Processing**:
+  - Audio transcription using OpenAI Whisper
+  - Image captioning using OpenAI GPT-4 Vision
+  - Text embedding generation using OpenAI Embeddings
+- **UMAP Visualization**: Interactive 2D visualization of entries based on semantic similarity
+- **Collections**: Organize entries into different collections/parks
+- **Comments**: Add comments to entries with full admin controls
+- **CSV Export**: Export all data for analysis
+- **Admin Panel**: Secure admin authentication for content management
+
+## Quick Start
+
+1. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+2. **Set up environment variables**:
+   ```bash
+   cp .env.example .env
+   ```
+
+   Fill in your environment variables:
+   - `OPENAI_API_KEY`: Your OpenAI API key
+   - `API_KEY`: Secure API key for endpoint access
+   - `NEXT_PUBLIC_API_KEY`: Same API key for client-side requests
+   - `ADMIN_USERNAME`: Admin username (default: admin)
+   - `ADMIN_PASSWORD`: Admin password
+
+3. **Set up the database**:
+   ```bash
+   npx prisma db push
+   ```
+
+4. **Start the development server**:
+   ```bash
+   npm run dev
+   ```
+
+5. **Open your browser** to [http://localhost:3000](http://localhost:3000)
+
+## API Endpoints
+
+All API endpoints require an `x-api-key` header with your API key.
+
+### Data Endpoints
+- `POST /api/add` - Add a text entry
+- `POST /api/add_audio` - Add an audio entry (with file upload)
+- `POST /api/add_image` - Add an image entry (with file upload)
+- `GET /api/collection/:collection` - Get all entries for a collection
+- `GET /api/export_csv` - Export entries as CSV
+
+### Admin Endpoints
+- `POST /api/admin_signin` - Sign in as admin
+- `DELETE /api/delete_entry/:id` - Delete an entry (admin only)
+- `DELETE /api/delete_comment/:id` - Delete a comment (admin only)
+
+## Data Schema
+
+Entries are stored with the following structure:
+
+```typescript
+{
+  id: string,           // UUID
+  data: string,         // Text content, transcription, or caption
+  metadata: {
+    type?: 'text' | 'audio' | 'image',
+    audioFile?: string,   // Filename for audio entries
+    imageFile?: string,   // Filename for image entries
+    author?: {
+      name?: string,
+      instagram?: string,
+      url?: string
+    },
+    comment_ids?: string[]  // Array of comment IDs
+  },
+  embedding: string,    // JSON string of 1536-dimension vector
+  createdAt: datetime,
+  updatedAt: datetime,
+  collection: string,   // Collection/park name
+  parentId?: string     // For comments, ID of parent entry
+}
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Usage
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Visualization
+- View entries as points in 2D UMAP space
+- Different types show as different shapes (circles for text, rectangles for images, circles with play icon for audio)
+- Click on any point to open the sidebar with full details
+- Lines connect comments to their parent entries
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Adding Content
+Use the API endpoints to add content:
 
-## Learn More
+```bash
+# Add text
+curl -X POST http://localhost:3000/api/add \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{"data": "This is a text note", "collection": "central-park"}'
 
-To learn more about Next.js, take a look at the following resources:
+# Add image (requires form data)
+curl -X POST http://localhost:3000/api/add_image \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "image=@photo.jpg" \
+  -F "collection=central-park"
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Add audio (requires form data)
+curl -X POST http://localhost:3000/api/add_audio \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "audio=@recording.mp3" \
+  -F "collection=central-park"
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Admin Mode
+1. Click "Admin" button in the top-right corner
+2. Sign in with your admin credentials
+3. In admin mode, you can:
+   - Add comments to entries
+   - Delete entries and comments
+   - View all admin controls in the sidebar
 
-## Deploy on Vercel
+## File Storage
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Audio files are stored in `public/audio/`
+- Image files are stored in `public/images/`
+- Database is SQLite stored in `prisma/dev.db`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Development
+
+- Built with Next.js 15, TypeScript, and Tailwind CSS
+- Uses Prisma ORM for database management
+- D3.js and UMAP-js for visualization
+- OpenAI APIs for content processing
+
+## Production Notes
+
+- Set up proper environment variables for production
+- Consider using Redis for session storage instead of in-memory
+- Configure proper file storage (AWS S3, etc.) for production
+- Set up database backups and monitoring

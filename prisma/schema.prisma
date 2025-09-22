@@ -1,0 +1,28 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Entry {
+  id         String   @id @default(uuid())
+  data       String
+  metadata   Json
+  embedding  String   // JSON string of 1536 vector
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  collection String   @default("default")
+
+  // Relations for comments
+  parentId   String?  @map("parent_id")
+  parent     Entry?   @relation("EntryComments", fields: [parentId], references: [id], onDelete: Cascade)
+  comments   Entry[]  @relation("EntryComments")
+
+  @@map("entries")
+}

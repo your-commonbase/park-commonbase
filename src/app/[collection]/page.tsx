@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Cookies from 'js-cookie'
 import UMAPVisualization from '@/components/UMAPVisualization'
 import Sidebar from '@/components/Sidebar'
@@ -20,11 +20,14 @@ interface Entry {
   comments?: Entry[]
 }
 
-export default function Home() {
+export default function CollectionPage() {
+  const params = useParams()
   const router = useRouter()
+  const collectionParam = params?.collection as string
+
   const [entries, setEntries] = useState<Entry[]>([])
   const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null)
-  const [collection, setCollection] = useState('default')
+  const [collection, setCollection] = useState(collectionParam || 'default')
   const [collections, setCollections] = useState<string[]>(['default'])
   const [isAdmin, setIsAdmin] = useState(false)
   const [showAdminLogin, setShowAdminLogin] = useState(false)
@@ -47,6 +50,13 @@ export default function Home() {
       setIsAdmin(true)
     }
   }, [])
+
+  // Update collection when URL parameter changes
+  useEffect(() => {
+    if (collectionParam) {
+      setCollection(collectionParam)
+    }
+  }, [collectionParam])
 
   // Load all available collections
   useEffect(() => {
@@ -274,7 +284,6 @@ export default function Home() {
         result = await response.json()
       } else if (activeUploadTab === 'csv') {
         console.log('Processing CSV data...')
-        // We'll implement CSV processing next
         response = await handleCSVUpload()
         result = response
       }
