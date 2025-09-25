@@ -6,18 +6,18 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Entry {
-  id         String   @id @default(uuid())
+  id         String                     @id @default(uuid())
   data       String
   metadata   Json
-  embedding  String   // JSON string of 1536 vector
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-  collection String   @default("default")
+  embedding  Unsupported("vector(1536)")   // pgvector type for 1536-dimensional embeddings
+  createdAt  DateTime                   @default(now()) @map("created_at")
+  updatedAt  DateTime                   @updatedAt @map("updated_at")
+  collection String                     @default("default")
 
   // Relations for comments
   parentId   String?  @map("parent_id")
