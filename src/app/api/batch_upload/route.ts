@@ -56,21 +56,33 @@ export async function POST(request: NextRequest) {
         // Generate embedding for the text
         const embedding = await generateEmbedding(data)
 
-        // Create entry
-        const entry = await prisma.entry.create({
-          data: {
-            data,
-            metadata: {
-              type: 'text',
-              author: authorName ? { name: authorName } : undefined,
-              batchImport: true,
-              importedAt: new Date().toISOString(),
-            },
-            embedding: JSON.stringify(embedding),
-            collection,
-            parentId: null,
-          },
-        })
+        // Create entry using raw SQL for vector insertion
+        const tableName = process.env.DATABASE_TABLE_NAME || 'entries'
+        const insertSQL = `
+          INSERT INTO ${tableName} (id, data, metadata, embedding, collection, parent_id, created_at, updated_at)
+          VALUES (gen_random_uuid(), $1, $2::jsonb, $3::vector, $4, $5, NOW(), NOW())
+          RETURNING id, created_at, updated_at
+        `
+
+        const result = await prisma.$queryRawUnsafe(
+          insertSQL,
+          data,
+          JSON.stringify({
+            type: 'text',
+            author: authorName ? { name: authorName } : undefined,
+            batchImport: true,
+            importedAt: new Date().toISOString(),
+          }),
+          JSON.stringify(embedding),
+          collection,
+          null
+        ) as any[]
+
+        const entry = {
+          id: result[0].id,
+          createdAt: result[0].created_at,
+          updatedAt: result[0].updated_at
+        }
 
         results.push({
           id: entry.id,

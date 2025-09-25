@@ -46,42 +46,57 @@ export async function POST(request: NextRequest) {
     // Generate embedding for the caption
     const embedding = await generateEmbedding(caption)
 
-    // Create entry with image metadata
-    const entry = await prisma.entry.create({
-      data: {
-        data: caption,
-        metadata: {
-          ...metadata,
-          type: 'image',
-          imageUrl: imageUrl,
-          imageFile: fileName, // Keep for backward compatibility
-        },
-        embedding: JSON.stringify(embedding),
-        collection,
-        parentId: parentId || null,
-      },
-    })
+    // Create entry with image metadata using raw SQL for vector insertion
+    const tableName = process.env.DATABASE_TABLE_NAME || 'entries'
+    const insertSQL = `
+      INSERT INTO ${tableName} (id, data, metadata, embedding, collection, parent_id, created_at, updated_at)
+      VALUES (gen_random_uuid(), $1, $2::jsonb, $3::vector, $4, $5, NOW(), NOW())
+      RETURNING id, created_at, updated_at
+    `
+
+    const result = await prisma.$queryRawUnsafe(
+      insertSQL,
+      caption,
+      JSON.stringify({
+        ...metadata,
+        type: 'image',
+        imageUrl: imageUrl,
+        imageFile: fileName, // Keep for backward compatibility
+      }),
+      JSON.stringify(embedding),
+      collection,
+      parentId || null
+    ) as any[]
+
+    const entry = {
+      id: result[0].id,
+      createdAt: result[0].created_at,
+      updatedAt: result[0].updated_at
+    }
 
     // If this is a comment, update the parent's comment_ids
     if (parentId) {
-      const parent = await prisma.entry.findUnique({
-        where: { id: parentId },
-      })
+      const parentQuery = `SELECT metadata FROM ${tableName} WHERE id = $1`
+      const parentResult = await prisma.$queryRawUnsafe(parentQuery, parentId) as any[]
 
-      if (parent) {
-        const parentMetadata = parent.metadata as any
+      if (parentResult.length > 0) {
+        const parentMetadata = parentResult[0].metadata || {}
         const commentIds = parentMetadata.comment_ids || []
         commentIds.push(entry.id)
 
-        await prisma.entry.update({
-          where: { id: parentId },
-          data: {
-            metadata: {
-              ...parentMetadata,
-              comment_ids: commentIds,
-            },
-          },
-        })
+        const updateParentSQL = `
+          UPDATE ${tableName}
+          SET metadata = $1::jsonb, updated_at = NOW()
+          WHERE id = $2
+        `
+        await prisma.$queryRawUnsafe(
+          updateParentSQL,
+          JSON.stringify({
+            ...parentMetadata,
+            comment_ids: commentIds,
+          }),
+          parentId
+        )
       }
     }
 

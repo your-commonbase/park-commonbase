@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Play, Pause, Trash2 } from 'lucide-react'
 
 interface Entry {
@@ -25,6 +25,67 @@ interface SidebarProps {
   isAdmin: boolean
 }
 
+// AudioPlayer component for individual audio entries
+function AudioPlayer({ audioUrl, entryId }: { audioUrl: string; entryId: string }) {
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
+
+  useEffect(() => {
+    // Reset audio state when entry changes
+    if (audio) {
+      audio.pause()
+      setAudio(null)
+      setIsPlaying(false)
+    }
+  }, [audioUrl, entryId])
+
+  useEffect(() => {
+    // Cleanup audio when component unmounts
+    return () => {
+      if (audio) {
+        audio.pause()
+        setAudio(null)
+      }
+    }
+  }, [audio])
+
+  const handlePlayAudio = () => {
+    if (audio) {
+      if (isPlaying) {
+        audio.pause()
+        setIsPlaying(false)
+      } else {
+        audio.play()
+        setIsPlaying(true)
+      }
+    } else {
+      const newAudio = new Audio(audioUrl)
+      newAudio.onended = () => setIsPlaying(false)
+      newAudio.onpause = () => setIsPlaying(false)
+      newAudio.onerror = () => {
+        console.error('Audio failed to load:', audioUrl)
+        setIsPlaying(false)
+      }
+      newAudio.play().catch((error) => {
+        console.error('Audio play failed:', error)
+        setIsPlaying(false)
+      })
+      setIsPlaying(true)
+      setAudio(newAudio)
+    }
+  }
+
+  return (
+    <button
+      onClick={handlePlayAudio}
+      className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+    >
+      {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+      {isPlaying ? 'Pause' : 'Play'} Audio
+    </button>
+  )
+}
+
 export default function Sidebar({
   entry,
   isOpen,
@@ -35,8 +96,6 @@ export default function Sidebar({
   isAdmin,
 }: SidebarProps) {
   const [newComment, setNewComment] = useState('')
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [audio, setAudio] = useState<HTMLAudioElement | null>(null)
   const [isAddingComment, setIsAddingComment] = useState(false)
 
   const handleAddComment = async (e: React.FormEvent) => {
@@ -54,27 +113,6 @@ export default function Sidebar({
     }
   }
 
-  const handlePlayAudio = () => {
-    const audioUrl = entry?.metadata.audioUrl || (entry?.metadata.audioFile ? `/audio/${entry.metadata.audioFile}` : null)
-    if (!audioUrl) return
-
-    if (audio) {
-      if (isPlaying) {
-        audio.pause()
-        setIsPlaying(false)
-      } else {
-        audio.play()
-        setIsPlaying(true)
-      }
-    } else {
-      const newAudio = new Audio(audioUrl)
-      newAudio.onended = () => setIsPlaying(false)
-      newAudio.onpause = () => setIsPlaying(false)
-      newAudio.play()
-      setIsPlaying(true)
-      setAudio(newAudio)
-    }
-  }
 
   if (!isOpen || !entry) return null
 
@@ -130,13 +168,10 @@ export default function Sidebar({
           {/* Audio Player */}
           {entry.metadata.type === 'audio' && (entry.metadata.audioUrl || entry.metadata.audioFile) && (
             <div className="mb-4">
-              <button
-                onClick={handlePlayAudio}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-              >
-                {isPlaying ? <Pause size={16} /> : <Play size={16} />}
-                {isPlaying ? 'Pause' : 'Play'} Audio
-              </button>
+              <AudioPlayer
+                audioUrl={entry.metadata.audioUrl || `/audio/${entry.metadata.audioFile}`}
+                entryId={entry.id}
+              />
             </div>
           )}
 
@@ -228,6 +263,15 @@ export default function Sidebar({
                       alt="Comment image"
                       className="w-full h-24 object-cover rounded mb-2"
                     />
+                  )}
+
+                  {comment.metadata.type === 'audio' && (comment.metadata.audioUrl || comment.metadata.audioFile) && (
+                    <div className="mb-2">
+                      <AudioPlayer
+                        audioUrl={comment.metadata.audioUrl || `/audio/${comment.metadata.audioFile}`}
+                        entryId={comment.id}
+                      />
+                    </div>
                   )}
 
                   <p className="text-sm text-gray-700 mb-1">{comment.data}</p>

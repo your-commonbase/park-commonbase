@@ -14,54 +14,62 @@ export async function DELETE(
     }
 
     const { id } = await params
+    const tableName = process.env.DATABASE_TABLE_NAME || 'entries'
 
-    // Find the entry first to get file information
-    const entry = await prisma.entry.findUnique({
-      where: { id },
-      include: {
-        comments: true,
-      },
-    })
+    // Find the entry first to get file information and parent info
+    const entryQuery = `SELECT id, metadata, parent_id FROM ${tableName} WHERE id = $1`
+    const entryResult = await prisma.$queryRawUnsafe(entryQuery, id) as any[]
 
-    if (!entry) {
+    if (entryResult.length === 0) {
       return NextResponse.json({ error: 'Entry not found' }, { status: 404 })
     }
 
-    const metadata = entry.metadata as any
+    const entry = entryResult[0]
+    const metadata = entry.metadata || {}
 
-    // Delete associated files
+    // Delete associated files (only local files, UploadThing files remain accessible)
     if (metadata.type === 'audio' && metadata.audioFile) {
-      await deleteFile(metadata.audioFile, 'audio')
+      try {
+        await deleteFile(metadata.audioFile, 'audio')
+      } catch (error) {
+        console.warn('Failed to delete audio file:', metadata.audioFile)
+      }
     } else if (metadata.type === 'image' && metadata.imageFile) {
-      await deleteFile(metadata.imageFile, 'image')
-    }
-
-    // If this entry has a parent, remove it from parent's comment_ids
-    if (entry.parentId) {
-      const parent = await prisma.entry.findUnique({
-        where: { id: entry.parentId },
-      })
-
-      if (parent) {
-        const parentMetadata = parent.metadata as any
-        const commentIds = (parentMetadata.comment_ids || []).filter((commentId: string) => commentId !== id)
-
-        await prisma.entry.update({
-          where: { id: entry.parentId },
-          data: {
-            metadata: {
-              ...parentMetadata,
-              comment_ids: commentIds,
-            },
-          },
-        })
+      try {
+        await deleteFile(metadata.imageFile, 'image')
+      } catch (error) {
+        console.warn('Failed to delete image file:', metadata.imageFile)
       }
     }
 
-    // Delete the entry (comments will be cascade deleted due to the schema)
-    await prisma.entry.delete({
-      where: { id },
-    })
+    // If this entry has a parent, remove it from parent's comment_ids
+    if (entry.parent_id) {
+      const parentQuery = `SELECT metadata FROM ${tableName} WHERE id = $1`
+      const parentResult = await prisma.$queryRawUnsafe(parentQuery, entry.parent_id) as any[]
+
+      if (parentResult.length > 0) {
+        const parentMetadata = parentResult[0].metadata || {}
+        const commentIds = (parentMetadata.comment_ids || []).filter((commentId: string) => commentId !== id)
+
+        const updateParentSQL = `
+          UPDATE ${tableName}
+          SET metadata = $1::jsonb, updated_at = NOW()
+          WHERE id = $2
+        `
+        await prisma.$queryRawUnsafe(
+          updateParentSQL,
+          JSON.stringify({
+            ...parentMetadata,
+            comment_ids: commentIds,
+          }),
+          entry.parent_id
+        )
+      }
+    }
+
+    // Delete the entry and its comments (cascade delete)
+    const deleteSQL = `DELETE FROM ${tableName} WHERE id = $1 OR parent_id = $1`
+    await prisma.$queryRawUnsafe(deleteSQL, id)
 
     return NextResponse.json({ message: 'Entry deleted successfully' })
   } catch (error) {

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Cookies from 'js-cookie'
 import SettingsModal from '@/components/SettingsModal'
 
 interface Collection {
@@ -18,12 +17,20 @@ export default function Home() {
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Check for admin cookie on page load
+  // Check for admin status on page load
   useEffect(() => {
-    const adminCookie = Cookies.get('park-admin')
-    if (adminCookie === 'true') {
-      setIsAdmin(true)
+    const checkAdminStatus = async () => {
+      try {
+        const response = await fetch('/api/admin_status')
+        const { isAdmin: adminStatus } = await response.json()
+        setIsAdmin(adminStatus)
+      } catch (error) {
+        console.error('Error checking admin status:', error)
+        setIsAdmin(false)
+      }
     }
+
+    checkAdminStatus()
   }, [])
 
   // Load all available collections
@@ -68,7 +75,6 @@ export default function Home() {
 
       if (response.ok) {
         setIsAdmin(true)
-        Cookies.set('park-admin', 'true', { expires: 7 })
         return true
       } else {
         return false

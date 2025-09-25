@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Cookies from 'js-cookie'
 import UMAPVisualization from '@/components/UMAPVisualization'
 import Sidebar from '@/components/Sidebar'
 import SettingsModal from '@/components/SettingsModal'
@@ -36,12 +35,20 @@ export default function CollectionPage() {
   const [newlyAddedEntryId, setNewlyAddedEntryId] = useState<string | undefined>(undefined)
   const [viewMode, setViewMode] = useState<'graph' | 'ledger'>('graph')
 
-  // Check for admin cookie on page load
+  // Check for admin status on page load
   useEffect(() => {
-    const adminCookie = Cookies.get('park-admin')
-    if (adminCookie === 'true') {
-      setIsAdmin(true)
+    const checkAdminStatus = async () => {
+      try {
+        const response = await fetch('/api/admin_status')
+        const { isAdmin: adminStatus } = await response.json()
+        setIsAdmin(adminStatus)
+      } catch (error) {
+        console.error('Error checking admin status:', error)
+        setIsAdmin(false)
+      }
     }
+
+    checkAdminStatus()
   }, [])
 
   // Update collection when URL parameter changes
@@ -112,7 +119,6 @@ export default function CollectionPage() {
 
       if (response.ok) {
         setIsAdmin(true)
-        Cookies.set('park-admin', 'true', { expires: 7 })
         return true
       } else {
         return false
@@ -123,9 +129,14 @@ export default function CollectionPage() {
     }
   }
 
-  const handleAdminLogout = () => {
-    setIsAdmin(false)
-    Cookies.remove('park-admin')
+  const handleAdminLogout = async () => {
+    try {
+      await fetch('/api/admin_signout', { method: 'POST' })
+    } catch (error) {
+      console.error('Error signing out:', error)
+    } finally {
+      setIsAdmin(false)
+    }
   }
 
   const handleAddComment = async (parentId: string, content: string) => {
