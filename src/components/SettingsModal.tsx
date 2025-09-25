@@ -45,6 +45,7 @@ export default function SettingsModal({
   const [authorName, setAuthorName] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [csvData, setCsvData] = useState('')
+  const [csvFile, setCsvFile] = useState<File | null>(null)
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string>('')
   const [uploadedAudioUrl, setUploadedAudioUrl] = useState<string>('')
   const [isUploading, setIsUploading] = useState(false)
@@ -113,7 +114,7 @@ export default function SettingsModal({
 
   const handleAddEntry = async (e: React.FormEvent) => {
     e.preventDefault()
-    if ((!newEntryText.trim() && !selectedFile && !uploadedImageUrl && !uploadedAudioUrl && !csvData.trim()) || isAddingEntry) return
+    if ((!newEntryText.trim() && !selectedFile && !uploadedImageUrl && !uploadedAudioUrl && !csvFile) || isAddingEntry) return
 
     try {
       if (activeUploadTab === 'text') {
@@ -184,6 +185,7 @@ export default function SettingsModal({
       setAuthorName('')
       setSelectedFile(null)
       setCsvData('')
+      setCsvFile(null)
       setUploadedImageUrl('')
       setUploadedAudioUrl('')
       onClose() // Auto close modal after adding entry
@@ -249,6 +251,41 @@ export default function SettingsModal({
       console.error('Failed to start audio upload:', error)
       setIsUploading(false)
     }
+  }
+
+  const handleCsvFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.name.endsWith('.csv')) {
+      alert('Please select a CSV file')
+      return
+    }
+
+    setCsvFile(file)
+
+    // Read and validate CSV file
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const text = event.target?.result as string
+      if (text) {
+        // Basic CSV validation - check for data and author columns
+        const lines = text.split('\n').filter(line => line.trim())
+        if (lines.length < 2) {
+          alert('CSV file must have at least a header row and one data row')
+          return
+        }
+
+        const headers = lines[0].toLowerCase().split(',').map(h => h.trim())
+        if (!headers.includes('data') || !headers.includes('author')) {
+          alert('CSV file must have "data" and "author" columns')
+          return
+        }
+
+        setCsvData(text)
+      }
+    }
+    reader.readAsText(file)
   }
 
   if (!isOpen) return null
@@ -565,14 +602,25 @@ export default function SettingsModal({
                 {/* CSV Upload */}
                 {activeUploadTab === 'csv' && (
                   <div>
-                    <textarea
-                      value={csvData}
-                      onChange={(e) => setCsvData(e.target.value)}
-                      placeholder="Paste CSV data here (data,author columns)..."
-                      className="w-full p-3 border border-gray-300 rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      rows={4}
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={handleCsvFileChange}
+                      className="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <p className="text-sm text-gray-600 mt-2">Format: Each row should have 'data' and 'author' columns</p>
+                    {csvFile && (
+                      <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
+                        <p className="text-sm text-green-700">
+                          ✅ {csvFile.name} selected and validated
+                        </p>
+                        <p className="text-xs text-green-600 mt-1">
+                          File contains required "data" and "author" columns
+                        </p>
+                      </div>
+                    )}
+                    <p className="text-sm text-gray-600 mt-2">
+                      Upload a CSV file with "data" and "author" columns for batch entry creation
+                    </p>
                   </div>
                 )}
 
@@ -596,7 +644,7 @@ export default function SettingsModal({
                     (activeUploadTab === 'text' && !newEntryText.trim()) ||
                     (activeUploadTab === 'image' && !uploadedImageUrl && !selectedFile) ||
                     (activeUploadTab === 'audio' && !uploadedAudioUrl && !selectedFile) ||
-                    (activeUploadTab === 'csv' && !csvData.trim()) ||
+                    (activeUploadTab === 'csv' && !csvFile) ||
                     isAddingEntry ||
                     isUploading
                   }

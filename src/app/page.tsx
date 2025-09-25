@@ -6,6 +6,7 @@ import Cookies from 'js-cookie'
 import UMAPVisualization from '@/components/UMAPVisualization'
 import Sidebar from '@/components/Sidebar'
 import SettingsModal from '@/components/SettingsModal'
+import LedgerView from '@/components/LedgerView'
 
 interface Entry {
   id: string
@@ -32,6 +33,7 @@ export default function Home() {
   const [authorName, setAuthorName] = useState('')
   const [isAddingEntry, setIsAddingEntry] = useState(false)
   const [newlyAddedEntryId, setNewlyAddedEntryId] = useState<string | undefined>(undefined)
+  const [viewMode, setViewMode] = useState<'graph' | 'ledger'>('graph')
 
   // Check for admin cookie on page load
   useEffect(() => {
@@ -299,6 +301,30 @@ export default function Home() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
+      {/* View Toggle */}
+      <div className="absolute top-4 left-4 z-50 flex bg-white border border-gray-300 rounded-lg shadow-md overflow-hidden">
+        <button
+          onClick={() => setViewMode('graph')}
+          className={`px-4 py-2 text-sm font-medium transition-colors ${
+            viewMode === 'graph'
+              ? 'bg-blue-600 text-white'
+              : 'text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          Graph
+        </button>
+        <button
+          onClick={() => setViewMode('ledger')}
+          className={`px-4 py-2 text-sm font-medium transition-colors ${
+            viewMode === 'ledger'
+              ? 'bg-blue-600 text-white'
+              : 'text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          Ledger
+        </button>
+      </div>
+
       {/* Settings Button */}
       <button
         onClick={() => setShowSettingsModal(true)}
@@ -314,15 +340,22 @@ export default function Home() {
         )}
       </button>
 
-      {/* Main Visualization */}
-      <UMAPVisualization
-        entries={entries}
-        collection={collection}
-        onNodeClick={handleNodeClick}
-        onCollectionChange={handleCollectionChange}
-        collections={collections}
-        newlyAddedEntryId={newlyAddedEntryId}
-      />
+      {/* Main Content */}
+      {viewMode === 'graph' ? (
+        <UMAPVisualization
+          entries={entries}
+          collection={collection}
+          onNodeClick={handleNodeClick}
+          onCollectionChange={handleCollectionChange}
+          collections={collections}
+          newlyAddedEntryId={newlyAddedEntryId}
+        />
+      ) : (
+        <LedgerView
+          entries={entries}
+          onEntryClick={handleNodeClick}
+        />
+      )}
 
       {/* Sidebar */}
       <Sidebar
