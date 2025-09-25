@@ -3,37 +3,20 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Cookies from 'js-cookie'
-import UMAPVisualization from '@/components/UMAPVisualization'
-import Sidebar from '@/components/Sidebar'
 import SettingsModal from '@/components/SettingsModal'
-import LedgerView from '@/components/LedgerView'
 
-interface Entry {
-  id: string
-  data: string
-  metadata: any
-  embedding: number[]
-  createdAt: string
-  updatedAt: string
-  collection: string
-  parentId?: string
-  comments?: Entry[]
+interface Collection {
+  name: string
+  count: number
 }
 
 export default function Home() {
   const router = useRouter()
-  const [entries, setEntries] = useState<Entry[]>([])
-  const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null)
-  const [collection, setCollection] = useState('default')
-  const [collections, setCollections] = useState<string[]>(['default'])
+  const [collections, setCollections] = useState<Collection[]>([])
+  const [selectedCollection, setSelectedCollection] = useState('')
   const [isAdmin, setIsAdmin] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
-  const [apiKey] = useState(process.env.NEXT_PUBLIC_API_KEY || '')
-  const [newEntryText, setNewEntryText] = useState('')
-  const [authorName, setAuthorName] = useState('')
-  const [isAddingEntry, setIsAddingEntry] = useState(false)
-  const [newlyAddedEntryId, setNewlyAddedEntryId] = useState<string | undefined>(undefined)
-  const [viewMode, setViewMode] = useState<'graph' | 'ledger'>('graph')
+  const [isLoading, setIsLoading] = useState(true)
 
   // Check for admin cookie on page load
   useEffect(() => {
@@ -54,42 +37,23 @@ export default function Home() {
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
-          const collectionNames = data.map(col => col.name)
-          setCollections(collectionNames)
+          setCollections(data)
+          if (data.length > 0 && !selectedCollection) {
+            setSelectedCollection(data[0].name)
+          }
         }
+        setIsLoading(false)
       })
       .catch(error => {
         console.error('Error loading collections:', error)
+        setIsLoading(false)
       })
-  }, [])
+  }, [selectedCollection])
 
-  // Load data for current collection
-  useEffect(() => {
-    fetch(`/api/collection/${collection}`)
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setEntries(data)
-        }
-      })
-      .catch(error => {
-        console.error('Error loading entries:', error)
-      })
-  }, [collection])
-
-  const handleNodeClick = (entry: Entry) => {
-    // If sidebar is open and it's the same entry, close it
-    if (selectedEntry && selectedEntry.id === entry.id) {
-      setSelectedEntry(null)
-    } else {
-      // Always open the clicked entry (even if another entry was selected)
-      setSelectedEntry(entry)
+  const handleCollectionSelect = () => {
+    if (selectedCollection) {
+      router.push(`/${selectedCollection}`)
     }
-  }
-
-  const handleCollectionChange = (newCollection: string) => {
-    setSelectedEntry(null)
-    router.push(`/${newCollection}`)
   }
 
   const handleAdminLogin = async (username: string, password: string): Promise<boolean> => {
@@ -115,216 +79,52 @@ export default function Home() {
     }
   }
 
-  const handleAdminLogout = () => {
-    setIsAdmin(false)
-    Cookies.remove('park-admin')
-  }
-
-  const handleAddComment = async (parentId: string, content: string) => {
-    const serverApiKey = 'testkey' // Match the server-side API key
-
+  const handleCreateCollection = async (name: string) => {
     try {
-      const response = await fetch('/api/add', {
+      const response = await fetch('/api/collections', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': serverApiKey,
+          'x-api-key': 'testkey',
         },
-        body: JSON.stringify({
-          data: content,
-          metadata: { type: 'text' },
-          collection,
-          parentId,
-        }),
+        body: JSON.stringify({ name }),
       })
 
       if (response.ok) {
-        const result = await response.json()
-
-        // Track newly added comment for highlighting
-        if (result && result.id) {
-          setNewlyAddedEntryId(result.id)
-          // Clear highlight after 3 seconds
-          setTimeout(() => setNewlyAddedEntryId(undefined), 3000)
-        }
-
-        // Refresh entries
-        const updatedEntries = await fetch(`/api/collection/${collection}`).then(res => res.json())
-
-        setEntries(updatedEntries)
-
-        // Update selected entry with new comments
-        const updatedEntry = updatedEntries.find((e: Entry) => e.id === parentId)
-        if (updatedEntry) {
-          setSelectedEntry(updatedEntry)
+        // Reload collections
+        const updatedResponse = await fetch('/api/collections', {
+          headers: { 'x-api-key': 'testkey' },
+        })
+        const updatedCollections = await updatedResponse.json()
+        if (Array.isArray(updatedCollections)) {
+          setCollections(updatedCollections)
+          setSelectedCollection(name)
         }
       }
     } catch (error) {
-      console.error('Error adding comment:', error)
+      console.error('Error creating collection:', error)
+      throw error
     }
   }
 
-  const handleDeleteEntry = async (id: string) => {
-    try {
-      const response = await fetch(`/api/delete_entry/${id}`, {
-        method: 'DELETE',
-      })
-
-      if (response.ok) {
-        setEntries(entries.filter(entry => entry.id !== id))
-        setSelectedEntry(null)
-      }
-    } catch (error) {
-      console.error('Error deleting entry:', error)
-    }
+  const handleAddEntry = async (data: FormData | Record<string, unknown>, type: string) => {
+    // This is not used on the home page but required by SettingsModal
+    throw new Error('Entry creation not available on home page')
   }
 
-  const handleDeleteComment = async (id: string) => {
-    try {
-      const response = await fetch(`/api/delete_comment/${id}`, {
-        method: 'DELETE',
-      })
-
-      if (response.ok) {
-        // Refresh entries
-        const updatedEntries = await fetch(`/api/collection/${collection}`).then(res => res.json())
-
-        setEntries(updatedEntries)
-
-        // Update selected entry
-        if (selectedEntry) {
-          const updatedEntry = updatedEntries.find((e: Entry) => e.id === selectedEntry.id)
-          if (updatedEntry) {
-            setSelectedEntry(updatedEntry)
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error deleting comment:', error)
-    }
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading collections...</p>
+        </div>
+      </div>
+    )
   }
-
-  const handleAddEntry = async (data: any, type: 'text' | 'image' | 'audio' | 'csv') => {
-    setIsAddingEntry(true)
-    const serverApiKey = 'testkey'
-
-    try {
-      let response
-      let result
-
-      if (type === 'text') {
-        response = await fetch('/api/add', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': serverApiKey,
-          },
-          body: JSON.stringify(data),
-        })
-        result = await response.json()
-      } else if (type === 'image') {
-        response = await fetch('/api/add_image', {
-          method: 'POST',
-          headers: {
-            'x-api-key': serverApiKey,
-          },
-          body: data,
-        })
-        result = await response.json()
-      } else if (type === 'audio') {
-        response = await fetch('/api/add_audio', {
-          method: 'POST',
-          headers: {
-            'x-api-key': serverApiKey,
-          },
-          body: data,
-        })
-        result = await response.json()
-      } else if (type === 'csv') {
-        response = await fetch('/api/batch_upload', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': serverApiKey,
-          },
-          body: JSON.stringify(data),
-        })
-        result = await response.json()
-      }
-
-      if (response && response.ok) {
-        if (result && result.id) {
-          setNewlyAddedEntryId(result.id)
-          setTimeout(() => setNewlyAddedEntryId(undefined), 3000)
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        const updatedEntries = await fetch(`/api/collection/${collection}`).then(res => res.json())
-        setEntries(updatedEntries)
-      }
-    } catch (error) {
-      console.error('Error adding entry:', error)
-    } finally {
-      setIsAddingEntry(false)
-    }
-  }
-
-
-  const handleCreateCollection = async (name: string) => {
-    const serverApiKey = 'testkey'
-
-    const response = await fetch('/api/collections', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': serverApiKey,
-      },
-      body: JSON.stringify({ name }),
-    })
-
-    const result = await response.json()
-
-    if (response.ok) {
-      const updatedCollections = await fetch('/api/collections', {
-        headers: { 'x-api-key': serverApiKey },
-      })
-        .then(res => res.json())
-        .then(data => data.map((col: any) => col.name))
-
-      setCollections(updatedCollections)
-      router.push(`/${name}`)
-    } else {
-      throw new Error(result.error || 'Failed to create collection')
-    }
-  }
-
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden">
-      {/* View Toggle */}
-      <div className="absolute top-4 left-4 z-50 flex bg-white border border-gray-300 rounded-lg shadow-md overflow-hidden">
-        <button
-          onClick={() => setViewMode('graph')}
-          className={`px-4 py-2 text-sm font-medium transition-colors ${
-            viewMode === 'graph'
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          Graph
-        </button>
-        <button
-          onClick={() => setViewMode('ledger')}
-          className={`px-4 py-2 text-sm font-medium transition-colors ${
-            viewMode === 'ledger'
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-700 hover:bg-gray-50'
-          }`}
-        >
-          Ledger
-        </button>
-      </div>
-
+    <div className="min-h-screen bg-gray-50">
       {/* Settings Button */}
       <button
         onClick={() => setShowSettingsModal(true)}
@@ -341,47 +141,129 @@ export default function Home() {
       </button>
 
       {/* Main Content */}
-      {viewMode === 'graph' ? (
-        <UMAPVisualization
-          entries={entries}
-          collection={collection}
-          onNodeClick={handleNodeClick}
-          onCollectionChange={handleCollectionChange}
-          collections={collections}
-          newlyAddedEntryId={newlyAddedEntryId}
-        />
-      ) : (
-        <LedgerView
-          entries={entries}
-          onEntryClick={handleNodeClick}
-        />
-      )}
+      <div className="flex items-center justify-center min-h-screen px-4">
+        <div className="max-w-2xl w-full text-center">
+          {/* Header */}
+          <div className="mb-12">
+            <h1 className="text-5xl font-bold text-gray-900 mb-6">
+              Park Commonbase
+            </h1>
+            <p className="text-xl text-gray-600 mb-4">
+              An intelligent knowledge management system for organizing and exploring your data
+            </p>
+            <p className="text-lg text-gray-500">
+              Create collections of text, images, and audio. Visualize connections with AI-powered
+              semantic clustering and explore your knowledge through interactive graphs or detailed ledgers.
+            </p>
+          </div>
 
-      {/* Sidebar */}
-      <Sidebar
-        entry={selectedEntry}
-        isOpen={selectedEntry !== null}
-        onClose={() => setSelectedEntry(null)}
-        onAddComment={handleAddComment}
-        onDeleteEntry={handleDeleteEntry}
-        onDeleteComment={handleDeleteComment}
-        isAdmin={isAdmin}
-      />
+          {/* Collection Selector */}
+          <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
+            <h2 className="text-2xl font-semibold text-gray-800 mb-6">
+              Choose a Collection
+            </h2>
+
+            {collections.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500 mb-4">No collections found</p>
+                {isAdmin && (
+                  <p className="text-sm text-gray-400">
+                    Create your first collection using the settings menu
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="max-w-md mx-auto">
+                  <select
+                    value={selectedCollection}
+                    onChange={(e) => setSelectedCollection(e.target.value)}
+                    className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    {collections.map((collection) => (
+                      <option key={collection.name} value={collection.name}>
+                        {collection.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  onClick={handleCollectionSelect}
+                  disabled={!selectedCollection}
+                  className="px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  Explore Collection
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Features */}
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-white rounded-lg p-6 shadow-md">
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Graph View</h3>
+              <p className="text-gray-600 text-sm">
+                Visualize your data as an interactive network using UMAP clustering
+              </p>
+            </div>
+
+            <div className="bg-white rounded-lg p-6 shadow-md">
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Ledger View</h3>
+              <p className="text-gray-600 text-sm">
+                Browse entries in a structured table with metadata and embeddings
+              </p>
+            </div>
+
+            <div className="bg-white rounded-lg p-6 shadow-md">
+              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">AI Powered</h3>
+              <p className="text-gray-600 text-sm">
+                Automatic transcription, embedding generation, and semantic search
+              </p>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <p className="text-gray-400 text-sm">
+            {isAdmin ? (
+              <>Admin access enabled • Use settings to manage collections</>
+            ) : (
+              <>Need to create collections? Sign in as admin using the settings menu</>
+            )}
+          </p>
+        </div>
+      </div>
 
       {/* Settings Modal */}
-      <SettingsModal
-        isOpen={showSettingsModal}
-        onClose={() => setShowSettingsModal(false)}
-        isAdmin={isAdmin}
-        onAdminLogin={handleAdminLogin}
-        onAdminLogout={handleAdminLogout}
-        collection={collection}
-        collections={collections}
-        onCollectionChange={handleCollectionChange}
-        onCreateCollection={handleCreateCollection}
-        onAddEntry={handleAddEntry}
-        isAddingEntry={isAddingEntry}
-      />
+      {showSettingsModal && (
+        <SettingsModal
+          isOpen={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
+          isAdmin={isAdmin}
+          onAdminLogin={handleAdminLogin}
+          collection="default"
+          collections={collections.map(c => c.name)}
+          onCollectionChange={() => {}}
+          onCreateCollection={handleCreateCollection}
+          onAddEntry={handleAddEntry}
+          isAddingEntry={false}
+        />
+      )}
     </div>
   )
 }
