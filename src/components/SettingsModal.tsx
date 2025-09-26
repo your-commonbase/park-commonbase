@@ -70,32 +70,6 @@ export default function SettingsModal({
     onClientUploadComplete: async (res) => {
       if (res && res[0]) {
         setUploadedAudioUrl(res[0].url)
-
-        // If this is a recording upload, automatically create the entry
-        if (isRecordingUpload) {
-          try {
-            const formData = new FormData()
-            formData.append('uploadthingUrl', res[0].url)
-            formData.append('collection', collection)
-            const authorData = parseAuthorInput(authorName)
-            if (Object.keys(authorData).length > 0) {
-              formData.append('metadata', JSON.stringify({
-                author: authorData
-              }))
-            }
-
-            await onAddEntry(formData, 'audio')
-
-            // Reset states after successful entry creation
-            setSelectedFile(null)
-            setAuthorName('')
-            setIsRecordingUpload(false)
-            setUploadedAudioUrl('')
-            onClose() // Close modal after successful recording and transcription
-          } catch (error) {
-            console.error('Failed to create audio entry from recording:', error)
-          }
-        }
         setIsUploading(false)
       }
     },
@@ -233,15 +207,77 @@ export default function SettingsModal({
     const audioFile = new File([audioBlob], filename, { type: audioBlob.type })
     setSelectedFile(audioFile)
 
-    // Upload audio recording to UploadThing first, then create entry
     setIsUploading(true)
-    setIsRecordingUpload(true) // Mark this as a recording upload
+    setIsRecordingUpload(true)
+
     try {
-      await startAudioUpload([audioFile])
-      // The upload completion will be handled by the useUploadThing callback
-      // which sets uploadedAudioUrl and then we can create the entry
+      // Process audio and upload in parallel
+      const [uploadResult, audioProcessResult] = await Promise.all([
+        // Upload to UploadThing
+        startAudioUpload([audioFile]),
+        // Process with OpenAI
+        (async () => {
+          const formData = new FormData()
+          formData.append('audio', audioFile)
+          const response = await fetch('/api/process_audio', {
+            method: 'POST',
+            body: formData,
+          })
+          if (!response.ok) {
+            throw new Error('Failed to process audio')
+          }
+          return response.json()
+        })()
+      ])
+
+      // Wait for both to complete, then create the entry
+      if (uploadResult && audioProcessResult) {
+        // Get the upload URL from the result
+        const uploadUrl = Array.isArray(uploadResult) && uploadResult[0]?.url ? uploadResult[0].url : uploadedAudioUrl
+
+        if (!uploadUrl) {
+          throw new Error('Upload URL not available')
+        }
+
+        // Create entry with processed data
+        const authorData = parseAuthorInput(authorName)
+        const response = await fetch('/api/add_processed_audio', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            transcription: audioProcessResult.transcription,
+            embedding: audioProcessResult.embedding,
+            uploadthingUrl: uploadUrl,
+            collection,
+            metadata: Object.keys(authorData).length > 0 ? { author: authorData } : {}
+          }),
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+
+          // Trigger a refresh of the entries list
+          if (result && result.id) {
+            // This would typically trigger the parent to refresh entries
+            // For now, we'll rely on the onClose callback to handle it
+          }
+
+          // Reset states after successful entry creation
+          setSelectedFile(null)
+          setAuthorName('')
+          setIsRecordingUpload(false)
+          setUploadedAudioUrl('')
+          setIsUploading(false)
+          onClose() // Close modal after successful recording and transcription
+        } else {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to create audio entry')
+        }
+      }
     } catch (error) {
-      console.error('Failed to upload audio recording:', error)
+      console.error('Failed to process audio recording:', error)
       setIsUploading(false)
       setIsRecordingUpload(false)
     }

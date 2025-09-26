@@ -395,11 +395,11 @@ export default function CollectionPage() {
               newlyAddedEntryId={newlyAddedEntryId}
             />
             {/* QR Code - Bottom Right Corner */}
-            <div className="absolute bottom-4 right-4 z-40">
+            <div className="fixed bottom-4 right-4 z-40 sm:absolute sm:bottom-4 sm:right-4 safe-area-inset-bottom safe-area-inset-right">
               <QRCodeComponent
                 url={typeof window !== 'undefined' ? window.location.href : ''}
-                size={80}
-                className="opacity-80 hover:opacity-100 transition-opacity"
+                size={64}
+                className="opacity-80 hover:opacity-100 transition-opacity sm:w-20 sm:h-20"
               />
             </div>
           </>
