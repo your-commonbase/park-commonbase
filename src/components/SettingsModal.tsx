@@ -51,6 +51,7 @@ export default function SettingsModal({
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string>('')
   const [uploadedAudioUrl, setUploadedAudioUrl] = useState<string>('')
   const [isUploading, setIsUploading] = useState(false)
+  const [isRecordingUpload, setIsRecordingUpload] = useState(false)
 
   const { startUpload: startImageUpload } = useUploadThing('imageUploader', {
     onClientUploadComplete: (res) => {
@@ -66,15 +67,42 @@ export default function SettingsModal({
   })
 
   const { startUpload: startAudioUpload } = useUploadThing('audioUploader', {
-    onClientUploadComplete: (res) => {
+    onClientUploadComplete: async (res) => {
       if (res && res[0]) {
         setUploadedAudioUrl(res[0].url)
+
+        // If this is a recording upload, automatically create the entry
+        if (isRecordingUpload) {
+          try {
+            const formData = new FormData()
+            formData.append('uploadthingUrl', res[0].url)
+            formData.append('collection', collection)
+            const authorData = parseAuthorInput(authorName)
+            if (Object.keys(authorData).length > 0) {
+              formData.append('metadata', JSON.stringify({
+                author: authorData
+              }))
+            }
+
+            await onAddEntry(formData, 'audio')
+
+            // Reset states after successful entry creation
+            setSelectedFile(null)
+            setAuthorName('')
+            setIsRecordingUpload(false)
+            setUploadedAudioUrl('')
+            onClose() // Close modal after successful recording and transcription
+          } catch (error) {
+            console.error('Failed to create audio entry from recording:', error)
+          }
+        }
         setIsUploading(false)
       }
     },
     onUploadError: (error) => {
       console.error('Audio upload error:', error)
       setIsUploading(false)
+      setIsRecordingUpload(false)
     },
   })
 
@@ -205,29 +233,17 @@ export default function SettingsModal({
     const audioFile = new File([audioBlob], filename, { type: audioBlob.type })
     setSelectedFile(audioFile)
 
-    // Directly create the audio entry with temporary file (bypass UploadThing for recordings)
+    // Upload audio recording to UploadThing first, then create entry
     setIsUploading(true)
+    setIsRecordingUpload(true) // Mark this as a recording upload
     try {
-      const formData = new FormData()
-      formData.append('audio', audioFile)
-      formData.append('collection', collection)
-      const authorData = parseAuthorInput(authorName)
-      if (Object.keys(authorData).length > 0) {
-        formData.append('metadata', JSON.stringify({
-          author: authorData
-        }))
-      }
-
-      await onAddEntry(formData, 'audio')
-
-      // Reset states after successful entry creation
-      setSelectedFile(null)
-      setAuthorName('')
-      setIsUploading(false)
-      onClose() // Close modal after successful recording and transcription
+      await startAudioUpload([audioFile])
+      // The upload completion will be handled by the useUploadThing callback
+      // which sets uploadedAudioUrl and then we can create the entry
     } catch (error) {
-      console.error('Failed to create audio entry from recording:', error)
+      console.error('Failed to upload audio recording:', error)
       setIsUploading(false)
+      setIsRecordingUpload(false)
     }
   }
 

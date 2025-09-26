@@ -43,12 +43,10 @@ export async function POST(request: NextRequest) {
       audioFileName = uploadthingUrl.split('/').pop() || 'audio.mp3'
       fileName = undefined // No local file when using UploadThing
     } else {
-      // Fallback for direct file upload (legacy)
-      const { saveAudioFile } = await import('@/lib/storage')
-      buffer = Buffer.from(await audioFile.arrayBuffer())
-      fileName = await saveAudioFile(buffer, audioFile.name)
-      audioUrl = `/audio/${fileName}` // Local URL
-      audioFileName = audioFile.name
+      // Direct file upload not supported on Vercel
+      return NextResponse.json({
+        error: 'Direct file upload not supported. Please use UploadThing URL.'
+      }, { status: 400 })
     }
 
     // Transcribe the audio

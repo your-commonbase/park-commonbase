@@ -40,11 +40,10 @@ export async function POST(request: NextRequest) {
       buffer = Buffer.from(await response.arrayBuffer())
       fileName = undefined // No local file when using UploadThing
     } else {
-      // Fallback for direct file upload (legacy)
-      const { saveImageFile } = await import('@/lib/storage')
-      buffer = Buffer.from(await imageFile.arrayBuffer())
-      fileName = await saveImageFile(buffer, imageFile.name)
-      imageUrl = `/images/${fileName}` // Local URL
+      // Direct file upload not supported on Vercel
+      return NextResponse.json({
+        error: 'Direct file upload not supported. Please use UploadThing URL.'
+      }, { status: 400 })
     }
 
     // Generate caption for the image
