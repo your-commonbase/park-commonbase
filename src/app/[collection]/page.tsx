@@ -335,7 +335,7 @@ export default function CollectionPage() {
   return (
     <div className="relative h-screen w-screen overflow-hidden">
       {/* View Toggle */}
-      <div className="absolute top-4 left-4 z-50 flex bg-card border border-border rounded-lg shadow-md overflow-hidden">
+      <div className="fixed top-4 left-4 z-50 flex bg-card border border-border rounded-lg shadow-md overflow-hidden sm:absolute sm:top-4 sm:left-4 safe-area-inset-top safe-area-inset-left">
         <button
           onClick={() => setViewMode('graph')}
           className={`px-4 py-2 text-sm font-medium transition-colors ${

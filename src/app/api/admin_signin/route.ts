@@ -22,8 +22,9 @@ export async function POST(request: NextRequest) {
     response.cookies.set('admin_session', sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'lax', // Changed from 'strict' to 'lax' for better mobile compatibility
       maxAge: 60 * 60 * 24, // 24 hours
+      path: '/', // Explicitly set path
     })
 
     return response

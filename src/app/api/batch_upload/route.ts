@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
         const tableName = process.env.DATABASE_TABLE_NAME || 'entries'
         const insertSQL = `
           INSERT INTO ${tableName} (id, data, metadata, embedding, collection, parent_id, created_at, updated_at)
-          VALUES (gen_random_uuid(), $1, $2::jsonb, $3::vector, $4, $5, NOW(), NOW())
+          VALUES (gen_random_uuid(), $1, $2::jsonb, $3::vector, $4, $5::uuid, NOW(), NOW())
           RETURNING id, created_at, updated_at
         `
 

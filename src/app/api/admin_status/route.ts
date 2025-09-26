@@ -5,7 +5,14 @@ export async function GET(request: NextRequest) {
   try {
     const sessionToken = request.cookies.get('admin_session')?.value
 
-    if (!sessionToken || !validateSession(sessionToken)) {
+    if (!sessionToken) {
+      console.log('Admin status check: No session token found')
+      return NextResponse.json({ isAdmin: false })
+    }
+
+    const isValid = validateSession(sessionToken)
+    if (!isValid) {
+      console.log('Admin status check: Invalid session token')
       return NextResponse.json({ isAdmin: false })
     }
 

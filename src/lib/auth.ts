@@ -19,21 +19,58 @@ export async function validateAdmin(username: string, password: string): Promise
   }
 }
 
+import crypto from 'crypto'
+
+const SESSION_SECRET = process.env.SESSION_SECRET || 'fallback-secret-key-change-in-production'
+
 export function generateSessionToken(): string {
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+  // Create a JWT-like token with timestamp and signature
+  const payload = {
+    iat: Math.floor(Date.now() / 1000), // issued at (timestamp)
+    exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24), // expires in 24 hours
+    admin: true
+  }
+
+  const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString('base64url')
+  const signature = crypto
+    .createHmac('sha256', SESSION_SECRET)
+    .update(payloadBase64)
+    .digest('base64url')
+
+  return `${payloadBase64}.${signature}`
 }
 
-// Simple in-memory session store (use Redis in production)
-const activeSessions = new Set<string>()
-
 export function createSession(token: string): void {
-  activeSessions.add(token)
+  // No longer needed - JWT tokens are self-contained
 }
 
 export function validateSession(token: string): boolean {
-  return activeSessions.has(token)
+  try {
+    const [payloadBase64, signature] = token.split('.')
+    if (!payloadBase64 || !signature) return false
+
+    // Verify signature
+    const expectedSignature = crypto
+      .createHmac('sha256', SESSION_SECRET)
+      .update(payloadBase64)
+      .digest('base64url')
+
+    if (signature !== expectedSignature) return false
+
+    // Check expiration
+    const payload = JSON.parse(Buffer.from(payloadBase64, 'base64url').toString())
+    const now = Math.floor(Date.now() / 1000)
+
+    if (payload.exp < now) return false
+    if (!payload.admin) return false
+
+    return true
+  } catch (error) {
+    return false
+  }
 }
 
 export function destroySession(token: string): void {
-  activeSessions.delete(token)
+  // JWT tokens can't be invalidated server-side without a blacklist
+  // The cookie will be deleted client-side which is sufficient
 }

@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     const tableName = process.env.DATABASE_TABLE_NAME || 'entries'
     const insertSQL = `
       INSERT INTO ${tableName} (id, data, metadata, embedding, collection, parent_id, created_at, updated_at)
-      VALUES (gen_random_uuid(), $1, $2::jsonb, $3::vector, $4, $5, NOW(), NOW())
+      VALUES (gen_random_uuid(), $1, $2::jsonb, $3::vector, $4, $5::uuid, NOW(), NOW())
       RETURNING id, created_at, updated_at
     `
 
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
 
     // If this is a comment, update the parent's comment_ids
     if (parentId) {
-      const parentQuery = `SELECT metadata FROM ${tableName} WHERE id = $1`
+      const parentQuery = `SELECT metadata FROM ${tableName} WHERE id = $1::uuid`
       const parentResult = await prisma.$queryRawUnsafe(parentQuery, parentId) as any[]
 
       if (parentResult.length > 0) {
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
         const updateParentSQL = `
           UPDATE ${tableName}
           SET metadata = $1::jsonb, updated_at = NOW()
-          WHERE id = $2
+          WHERE id = $2::uuid
         `
         await prisma.$queryRawUnsafe(
           updateParentSQL,
