@@ -5,20 +5,26 @@ import { validateApiKey, validateSession } from '@/lib/auth'
 export async function GET(request: NextRequest) {
   try {
     // Reading collections is public - no authentication required
-    // Get all distinct collections with entry counts
-    const collections = await prisma.entry.groupBy({
-      by: ['collection'],
-      _count: {
-        id: true,
-      },
-      orderBy: {
-        collection: 'asc',
-      },
-    })
+    // Get all distinct collections with entry counts using raw SQL
+    const tableName = process.env.DATABASE_TABLE_NAME || 'entries'
+    const collectionsQuery = `
+      SELECT
+        collection,
+        COUNT(id) as count
+      FROM ${tableName}
+      WHERE collection IS NOT NULL
+      GROUP BY collection
+      ORDER BY collection ASC
+    `
+
+    const collections = await prisma.$queryRawUnsafe(collectionsQuery) as Array<{
+      collection: string;
+      count: bigint;
+    }>
 
     const result = collections.map(group => ({
       name: group.collection,
-      count: group._count.id,
+      count: Number(group.count),
     }))
 
     return NextResponse.json(result)
