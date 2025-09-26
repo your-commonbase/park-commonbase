@@ -621,12 +621,12 @@ export default function SettingsModal({
                           ✅ {csvFile.name} selected and validated
                         </p>
                         <p className="text-xs text-green-600 mt-1">
-                          File contains required "data" and "author" columns
+                          File contains required &quot;data&quot; and &quot;author&quot; columns
                         </p>
                       </div>
                     )}
                     <p className="text-sm text-muted-foreground mt-2">
-                      Upload a CSV file with "data" and "author" columns for batch entry creation
+                      Upload a CSV file with &quot;data&quot; and &quot;author&quot; columns for batch entry creation
                     </p>
                   </div>
                 )}

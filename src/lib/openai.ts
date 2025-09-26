@@ -19,7 +19,7 @@ export async function transcribeAudio(audioBuffer: Buffer, originalFileName?: st
   else if (extension === 'flac') mimeType = 'audio/flac'
   else if (extension === 'ogg') mimeType = 'audio/ogg'
 
-  const file = new File([audioBuffer.buffer], fileName, { type: mimeType })
+  const file = new File([audioBuffer as any], fileName, { type: mimeType })
 
   const transcription = await openai.audio.transcriptions.create({
     file: file,

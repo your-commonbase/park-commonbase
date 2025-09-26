@@ -48,7 +48,7 @@ async function uploadToUploadThing(file: Buffer, filename: string, contentType: 
     })
 
     // Create a File-like object from the buffer
-    const fileBlob = new File([file], filename, { type: contentType })
+    const fileBlob = new File([new Uint8Array(file)], filename, { type: contentType })
 
     const response = await utapi.uploadFiles([fileBlob])
 

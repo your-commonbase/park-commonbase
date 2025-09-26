@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       message: 'Batch upload completed',
       processed: results.length,
-      errors: errors.length,
+      errorCount: errors.length,
       results,
       errors: errors.slice(0, 10), // Limit errors to first 10
     })

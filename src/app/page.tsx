@@ -220,6 +220,7 @@ export default function Home() {
           onClose={() => setShowSettingsModal(false)}
           isAdmin={isAdmin}
           onAdminLogin={handleAdminLogin}
+          onAdminLogout={() => setIsAdmin(false)}
           collection="default"
           collections={collections.map(c => c.name)}
           onCollectionChange={() => {}}

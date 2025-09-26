@@ -4,18 +4,7 @@ import { useState, useEffect } from 'react'
 import { X, Play, Pause, Trash2 } from 'lucide-react'
 import SpotifyEmbed from './SpotifyEmbed'
 import YouTubeEmbed from './YouTubeEmbed'
-
-interface Entry {
-  id: string
-  data: string
-  metadata: any
-  embedding: number[]
-  createdAt: string
-  updatedAt: string
-  collection: string
-  parentId?: string
-  comments?: Entry[]
-}
+import { Entry } from '@/types'
 
 interface SidebarProps {
   entry: Entry | null
@@ -39,7 +28,7 @@ function AudioPlayer({ audioUrl, entryId }: { audioUrl: string; entryId: string 
       setAudio(null)
       setIsPlaying(false)
     }
-  }, [audioUrl, entryId])
+  }, [audioUrl, entryId, audio])
 
   useEffect(() => {
     // Cleanup audio when component unmounts

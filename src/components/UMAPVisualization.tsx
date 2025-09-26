@@ -454,7 +454,7 @@ function UMAPVisualization({
     })
 
     // Extract positions and entries from memoized positioned entries
-    const umapResult: [number, number][] = positionedEntries.map(({ position }) => position)
+    const umapResult = positionedEntries.map(({ position }) => position as [number, number])
     const flattenedEntries = positionedEntries.map(({ entry }) => entry)
 
     console.log(`Using ${positionedEntries.length} positioned entries`)

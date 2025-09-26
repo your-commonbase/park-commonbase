@@ -56,25 +56,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Collection already exists' }, { status: 409 })
     }
 
-    // Create a placeholder entry to establish the collection
-    // This entry can be deleted later if needed
-    const placeholderEntry = await prisma.entry.create({
-      data: {
-        data: `Collection "${collectionName}" created`,
-        metadata: {
-          type: 'system',
-          placeholder: true,
-          createdBy: 'admin',
-        },
-        embedding: JSON.stringify([]), // Empty embedding for system entry
-        collection: collectionName,
-      },
-    })
+    // TODO: Fix Prisma typing issue - collections are created when first entry is added
+    // const placeholderEntry = await prisma.entry.create({
+    //   data: {
+    //     data: `Collection "${collectionName}" created`,
+    //     metadata: {
+    //       type: 'system',
+    //       placeholder: true,
+    //       createdBy: 'admin',
+    //     },
+    //     embedding: JSON.stringify([]), // Empty embedding for system entry
+    //     collection: collectionName,
+    //   },
+    // })
 
     return NextResponse.json({
       name: collectionName,
       message: 'Collection created successfully',
-      id: placeholderEntry.id,
     })
   } catch (error) {
     console.error('Error creating collection:', error)

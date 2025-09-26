@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       id: entry.id,
       data: entry.data,
       metadata: JSON.stringify(entry.metadata),
-      embedding: entry.embedding,
+      embedding: (entry as any).embedding,
       created_at: entry.createdAt.toISOString(),
       updated_at: entry.updatedAt.toISOString(),
       collection: entry.collection,

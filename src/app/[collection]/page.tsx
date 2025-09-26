@@ -7,18 +7,7 @@ import Sidebar from '@/components/Sidebar'
 import SettingsModal from '@/components/SettingsModal'
 import LedgerView from '@/components/LedgerView'
 import QRCodeComponent from '@/components/QRCode'
-
-interface Entry {
-  id: string
-  data: string
-  metadata: any
-  embedding: number[]
-  createdAt: string
-  updatedAt: string
-  collection: string
-  parentId?: string
-  comments?: Entry[]
-}
+import { Entry } from '@/types'
 
 export default function CollectionPage() {
   const params = useParams()
@@ -31,7 +20,6 @@ export default function CollectionPage() {
   const [collections, setCollections] = useState<string[]>(['default'])
   const [isAdmin, setIsAdmin] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
-  const [apiKey] = useState(process.env.NEXT_PUBLIC_API_KEY || '')
   const [isAddingEntry, setIsAddingEntry] = useState(false)
   const [newlyAddedEntryId, setNewlyAddedEntryId] = useState<string | undefined>(undefined)
   const [viewMode, setViewMode] = useState<'graph' | 'ledger'>('graph')
@@ -250,7 +238,7 @@ export default function CollectionPage() {
     }
   }
 
-  const handleAddEntry = async (data: any, type: 'text' | 'image' | 'audio' | 'csv') => {
+  const handleAddEntry = async (data: unknown, type: 'text' | 'image' | 'audio' | 'csv') => {
     setIsAddingEntry(true)
     const serverApiKey = 'testkey'
 
@@ -274,7 +262,7 @@ export default function CollectionPage() {
           headers: {
             'x-api-key': serverApiKey,
           },
-          body: data,
+          body: data as FormData,
         })
         result = await response.json()
       } else if (type === 'audio') {
@@ -283,7 +271,7 @@ export default function CollectionPage() {
           headers: {
             'x-api-key': serverApiKey,
           },
-          body: data,
+          body: data as FormData,
         })
         result = await response.json()
       } else if (type === 'csv') {
@@ -335,7 +323,7 @@ export default function CollectionPage() {
         headers: { 'x-api-key': serverApiKey },
       })
         .then(res => res.json())
-        .then(data => data.map((col: any) => col.name))
+        .then((data: Array<{ name: string }>) => data.map(col => col.name))
 
       setCollections(updatedCollections)
       router.push(`/${name}`)
