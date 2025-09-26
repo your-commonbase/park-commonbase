@@ -136,8 +136,8 @@ For the API keys and admin password, use strong, randomly generated values:
 
 ```bash
 # Example secure values (generate your own!)
-API_KEY=sk_live_abcd1234efgh5678ijkl9012mnop3456qrst7890
-NEXT_PUBLIC_API_KEY=sk_live_abcd1234efgh5678ijkl9012mnop3456qrst7890
+API_KEY=apikey1234567890abcdef
+NEXT_PUBLIC_API_KEY=apikey1234567890abcdef
 ADMIN_PASSWORD=MySecureAdminPassword123!
 ```
 
