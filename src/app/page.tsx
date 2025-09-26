@@ -155,7 +155,19 @@ export default function Home() {
               Park Commonbase
             </h1>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              Are you curious about what your fellow park-goers are thinking? What if you have something in common? Find out by adding an entry. You can write some text or air drop me a voice memo, an image, a Spotify link or YouTube video, or even leave a comment on an existing entry. You can add your Instagram handle if you want to be found later by other people. Then explore what has already been added by going through the graph and tapping on the nodes that people have already added. If you want to see this graph later, you can copy the permalink by scanning the QR code on the bottom right. You can make your own here and start the GitHub repo that powers part common base or follow us on Instagram.
+              Are you curious about what your fellow park-goers are thinking? What if you have something in common? Find out by adding an entry. You can write some text or air drop me a voice memo, an image, a Spotify link or YouTube video, or even leave a comment on an existing entry. You can add your Instagram handle if you want to be found later by other people. Then explore what has already been added by going through the graph and tapping on the nodes that people have already added. If you want to see this graph later, you can copy the permalink by scanning the QR code on the bottom right. You can make your own here and start <a href='https://github.com/your-commonbase/park-commonbase' target='_blank' rel='noopener noreferrer' style={{
+              textDecoration: 'underline',
+              textDecorationColor: 'rgba(59, 130, 246, 0.5)',
+              textUnderlineOffset: '2px',
+              color: 'inherit',
+            
+              }}>the GitHub repo that powers Park Commonbase</a> or follow us on Instagram through our <a href="https://linktr.ee/yourcommonbase?utm_source=linktree_profile_share&ltsid=161c666c-7081-45fd-80e4-702c94e76f78" target="_blank" rel="noopener noreferrer" style={{
+              textDecoration: 'underline',
+              textDecorationColor: 'rgba(59, 130, 246, 0.5)',
+              textUnderlineOffset: '2px',
+              color: 'inherit',
+            
+              }}>LinkTree</a>.
             </p>
           </div>
 

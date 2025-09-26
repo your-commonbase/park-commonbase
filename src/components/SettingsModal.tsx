@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Settings, Upload } from 'lucide-react'
+import { X, Settings, Upload, Home } from 'lucide-react'
 import AudioRecorder from '@/components/AudioRecorder'
 import { useUploadThing } from '@/lib/uploadthing-client'
 import { parseAuthorInput } from '@/lib/authorUtils'
@@ -306,12 +306,21 @@ export default function SettingsModal({
             <Settings size={20} />
             Settings
           </h2>
-          <button
-            onClick={onClose}
-            className="p-2 text-muted-foreground hover:bg-accent rounded"
-          >
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            <a
+              href="/"
+              className="p-2 text-muted-foreground hover:bg-accent hover:text-card-foreground rounded transition-colors"
+              title="Go to Homepage"
+            >
+              <Home size={20} />
+            </a>
+            <button
+              onClick={onClose}
+              className="p-2 text-muted-foreground hover:bg-accent rounded"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}
