@@ -4,7 +4,7 @@ Deploy the Park Commonbase application to Vercel with Supabase in just a few cli
 
 ## Quick Deploy
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fyour-commonbase%2Fpark-commonbase&env=DATABASE_URL,DATABASE_TABLE_NAME,OPENAI_API_KEY,API_KEY,NEXT_PUBLIC_API_KEY,ADMIN_USERNAME,ADMIN_PASSWORD,UPLOADTHING_TOKEN,UPLOADTHING_APP_NAME,NEXT_PUBLIC_GRAPH_DISPLAY_MODE&envDescription=Configure%20your%20database%20and%20API%20keys&envLink=https%3A%2F%2Fgithub.com%2Fyour-commonbase%2Fpark-commonbase%2Fblob%2Fmain%2FDEPLOYMENT.md&demo-title=Park%20Commonbase&demo-description=AI-powered%20knowledge%20management%20for%20communities&demo-url=https%3A%2F%2Fpark-commonbase.vercel.app)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fyour-commonbase%2Fpark-commonbase&env=SB_URL,DATABASE_TABLE_NAME,OPENAI_API_KEY,API_KEY,NEXT_PUBLIC_API_KEY,ADMIN_USERNAME,ADMIN_PASSWORD,UPLOADTHING_TOKEN,UPLOADTHING_APP_NAME,NEXT_PUBLIC_GRAPH_DISPLAY_MODE&envDescription=Configure%20your%20database%20and%20API%20keys&envLink=https%3A%2F%2Fgithub.com%2Fyour-commonbase%2Fpark-commonbase%2Fblob%2Fmain%2FDEPLOYMENT.md&demo-title=Park%20Commonbase&demo-description=AI-powered%20knowledge%20management%20for%20communities&demo-url=https%3A%2F%2Fpark-commonbase.vercel.app)
 
 ## Prerequisites
 
@@ -104,7 +104,7 @@ When deploying, you'll be prompted to set these environment variables:
 
 ```bash
 # Database Configuration
-DATABASE_URL=postgresql://postgres:your-password@db.abcdefghijklmnop.supabase.co:5432/postgres
+SB_URL=postgresql://postgres:your-password@db.abcdefghijklmnop.supabase.co:5432/postgres
 DATABASE_TABLE_NAME=entries
 
 # OpenAI Configuration
@@ -180,7 +180,7 @@ ADMIN_PASSWORD=MySecureAdminPassword123!
 
 ```bash
 # Database
-DATABASE_URL=postgresql://postgres:password@db.project.supabase.co:5432/postgres
+SB_URL=postgresql://postgres:password@db.project.supabase.co:5432/postgres
 DATABASE_TABLE_NAME=entries
 
 # OpenAI
@@ -205,7 +205,7 @@ NEXT_PUBLIC_GRAPH_DISPLAY_MODE=tooltip
 ### Common Issues
 
 1. **Database Connection Failed**
-   - Verify your `DATABASE_URL` is correct
+   - Verify your `SB_URL` is correct
    - Ensure the Supabase project is running
    - Check that pgvector extension is enabled
 

@@ -9,7 +9,7 @@
     }
   },
   "env": {
-    "DATABASE_URL": "@database_url",
+    "DATABASE_URL": "@sb_url",
     "OPENAI_API_KEY": "@openai_api_key",
     "API_KEY": "@api_key",
     "NEXT_PUBLIC_API_KEY": "@next_public_api_key",
