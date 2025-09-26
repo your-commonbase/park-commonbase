@@ -133,9 +133,11 @@ For the API keys and admin password, use strong, randomly generated values:
 ```bash
 # Example secure values (generate your own!)
 API_KEY=apikey1234567890abcdef
-NEXT_PUBLIC_API_KEY=apikey1234567890abcdef
+NEXT_PUBLIC_API_KEY=apikey1234567890abcdef  # Must match API_KEY exactly
 ADMIN_PASSWORD=MySecureAdminPassword123!
 ```
+
+**IMPORTANT**: `API_KEY` and `NEXT_PUBLIC_API_KEY` must be set to the exact same value. The server-side validates all API requests using `API_KEY`, while the client-side uses `NEXT_PUBLIC_API_KEY` to make authenticated requests.
 
 ### Deploy
 

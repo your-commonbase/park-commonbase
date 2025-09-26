@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { transcribeAudio, generateEmbedding } from '@/lib/openai'
-import { validateApiKey } from '@/lib/auth'
+import { validateApiKey, validateSession } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
+    // Check for API key first (for external integrations)
     const apiKey = request.headers.get('x-api-key')
-    if (!apiKey || !validateApiKey(apiKey)) {
-      return NextResponse.json({ error: 'Invalid API key' }, { status: 401 })
+    if (apiKey && validateApiKey(apiKey)) {
+      // API key is valid, proceed (for external integrations)
+    } else {
+      // Fall back to session-based auth for admin UI
+      const sessionToken = request.cookies.get('admin_session')?.value
+      if (!sessionToken || !validateSession(sessionToken)) {
+        return NextResponse.json({ error: 'Authentication required. Please sign in as admin.' }, { status: 401 })
+      }
     }
 
     const formData = await request.formData()

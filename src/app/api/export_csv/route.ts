@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { validateApiKey } from '@/lib/auth'
 import Papa from 'papaparse'
 
 export async function GET(request: NextRequest) {

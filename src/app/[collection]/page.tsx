@@ -50,12 +50,7 @@ export default function CollectionPage() {
 
   // Load all available collections
   useEffect(() => {
-    const serverApiKey = 'testkey'
-    fetch('/api/collections', {
-      headers: {
-        'x-api-key': serverApiKey,
-      },
-    })
+    fetch('/api/collections')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -143,15 +138,13 @@ export default function CollectionPage() {
   }
 
   const handleAddComment = async (parentId: string, content: string) => {
-    const serverApiKey = 'testkey' // Match the server-side API key
 
     try {
       const response = await fetch('/api/add', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': serverApiKey,
-        },
+          },
         body: JSON.stringify({
           data: content,
           metadata: { type: 'text' },
@@ -187,14 +180,12 @@ export default function CollectionPage() {
   }
 
   const handleDeleteEntry = async (id: string) => {
-    const serverApiKey = 'testkey' // Match the server-side API key
 
     try {
       const response = await fetch(`/api/delete_entry/${id}`, {
         method: 'DELETE',
         headers: {
-          'x-api-key': serverApiKey,
-        },
+          },
         credentials: 'include', // Include cookies in the request
       })
 
@@ -208,14 +199,12 @@ export default function CollectionPage() {
   }
 
   const handleDeleteComment = async (id: string) => {
-    const serverApiKey = 'testkey' // Match the server-side API key
 
     try {
       const response = await fetch(`/api/delete_comment/${id}`, {
         method: 'DELETE',
         headers: {
-          'x-api-key': serverApiKey,
-        },
+          },
         credentials: 'include', // Include cookies in the request
       })
 
@@ -240,7 +229,6 @@ export default function CollectionPage() {
 
   const handleAddEntry = async (data: unknown, type: 'text' | 'image' | 'audio' | 'csv') => {
     setIsAddingEntry(true)
-    const serverApiKey = 'testkey'
 
     try {
       let response
@@ -251,8 +239,7 @@ export default function CollectionPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-api-key': serverApiKey,
-          },
+              },
           body: JSON.stringify(data),
         })
         result = await response.json()
@@ -260,8 +247,7 @@ export default function CollectionPage() {
         response = await fetch('/api/add_image', {
           method: 'POST',
           headers: {
-            'x-api-key': serverApiKey,
-          },
+              },
           body: data as FormData,
         })
         result = await response.json()
@@ -269,8 +255,7 @@ export default function CollectionPage() {
         response = await fetch('/api/add_audio', {
           method: 'POST',
           headers: {
-            'x-api-key': serverApiKey,
-          },
+              },
           body: data as FormData,
         })
         result = await response.json()
@@ -279,8 +264,7 @@ export default function CollectionPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-api-key': serverApiKey,
-          },
+              },
           body: JSON.stringify(data),
         })
         result = await response.json()
@@ -305,13 +289,11 @@ export default function CollectionPage() {
 
 
   const handleCreateCollection = async (name: string) => {
-    const serverApiKey = 'testkey'
 
     const response = await fetch('/api/collections', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': serverApiKey,
       },
       body: JSON.stringify({ name }),
     })
@@ -319,9 +301,26 @@ export default function CollectionPage() {
     const result = await response.json()
 
     if (response.ok) {
-      const updatedCollections = await fetch('/api/collections', {
-        headers: { 'x-api-key': serverApiKey },
-      })
+      // Add "hello world" entry to the new collection
+      try {
+        await fetch('/api/add', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+              },
+          body: JSON.stringify({
+            data: 'hello world',
+            metadata: {
+              type: 'text',
+            },
+            collection: name,
+          }),
+        })
+      } catch (error) {
+        console.error('Failed to add hello world entry:', error)
+      }
+
+      const updatedCollections = await fetch('/api/collections')
         .then(res => res.json())
         .then((data: Array<{ name: string }>) => data.map(col => col.name))
 

@@ -36,12 +36,7 @@ export default function Home() {
 
   // Load all available collections
   useEffect(() => {
-    const serverApiKey = 'testkey'
-    fetch('/api/collections', {
-      headers: {
-        'x-api-key': serverApiKey,
-      },
-    })
+    fetch('/api/collections')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -92,21 +87,40 @@ export default function Home() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': 'testkey',
         },
         body: JSON.stringify({ name }),
       })
 
       if (response.ok) {
-        // Reload collections
-        const updatedResponse = await fetch('/api/collections', {
-          headers: { 'x-api-key': 'testkey' },
-        })
+        // Add "hello world" entry to the new collection
+        try {
+          await fetch('/api/add', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              data: 'hello world',
+              metadata: {
+                type: 'text',
+              },
+              collection: name,
+            }),
+          })
+        } catch (error) {
+          console.error('Failed to add hello world entry:', error)
+        }
+
+        // Reload collections (public endpoint, no auth needed)
+        const updatedResponse = await fetch('/api/collections')
         const updatedCollections = await updatedResponse.json()
         if (Array.isArray(updatedCollections)) {
           setCollections(updatedCollections)
           setSelectedCollection(name)
         }
+
+        // Navigate to the new collection
+        router.push(`/${name}`)
       }
     } catch (error) {
       console.error('Error creating collection:', error)
