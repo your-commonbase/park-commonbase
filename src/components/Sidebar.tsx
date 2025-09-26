@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { X, Play, Pause, Trash2 } from 'lucide-react'
+import SpotifyEmbed from './SpotifyEmbed'
+import YouTubeEmbed from './YouTubeEmbed'
 
 interface Entry {
   id: string
@@ -148,6 +150,8 @@ export default function Sidebar({
             <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
               entry.metadata.type === 'audio' ? 'bg-green-100 text-green-800' :
               entry.metadata.type === 'image' ? 'bg-yellow-100 text-yellow-800' :
+              entry.metadata.type === 'youtube' ? 'bg-red-100 text-red-800' :
+              entry.metadata.type === 'spotify' ? 'bg-green-100 text-green-800' :
               'bg-blue-100 text-blue-800'
             }`}>
               {entry.metadata.type || 'text'}
@@ -175,11 +179,36 @@ export default function Sidebar({
             </div>
           )}
 
+          {/* YouTube Embed */}
+          {entry.metadata.type === 'youtube' && entry.metadata.embedUrl && (
+            <div className="mb-4">
+              <YouTubeEmbed
+                embedUrl={entry.metadata.embedUrl}
+                title={entry.metadata.title}
+                originalUrl={entry.metadata.originalUrl}
+                videoId={entry.metadata.videoId}
+              />
+            </div>
+          )}
+
+          {/* Spotify Embed */}
+          {entry.metadata.type === 'spotify' && entry.metadata.embedUrl && (
+            <div className="mb-4">
+              <SpotifyEmbed
+                embedUrl={entry.metadata.embedUrl}
+                title={entry.metadata.title}
+                originalUrl={entry.metadata.originalUrl}
+              />
+            </div>
+          )}
+
           {/* Entry Text */}
           <div className="mb-6">
             <h3 className="font-medium mb-2">
               {entry.metadata.type === 'audio' ? 'Transcription:' :
                entry.metadata.type === 'image' ? 'Caption:' :
+               entry.metadata.type === 'youtube' ? 'Video Title:' :
+               entry.metadata.type === 'spotify' ? 'Track/Playlist:' :
                'Content:'}
             </h3>
             <p className="text-gray-700 whitespace-pre-wrap">{entry.data}</p>
@@ -242,6 +271,8 @@ export default function Sidebar({
                     <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                       comment.metadata.type === 'audio' ? 'bg-green-100 text-green-800' :
                       comment.metadata.type === 'image' ? 'bg-yellow-100 text-yellow-800' :
+                      comment.metadata.type === 'youtube' ? 'bg-red-100 text-red-800' :
+                      comment.metadata.type === 'spotify' ? 'bg-green-100 text-green-800' :
                       'bg-blue-100 text-blue-800'
                     }`}>
                       {comment.metadata.type || 'text'}

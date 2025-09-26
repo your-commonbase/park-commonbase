@@ -6,6 +6,7 @@ import UMAPVisualization from '@/components/UMAPVisualization'
 import Sidebar from '@/components/Sidebar'
 import SettingsModal from '@/components/SettingsModal'
 import LedgerView from '@/components/LedgerView'
+import QRCodeComponent from '@/components/QRCode'
 
 interface Entry {
   id: string
@@ -184,9 +185,15 @@ export default function CollectionPage() {
   }
 
   const handleDeleteEntry = async (id: string) => {
+    const serverApiKey = 'testkey' // Match the server-side API key
+
     try {
       const response = await fetch(`/api/delete_entry/${id}`, {
         method: 'DELETE',
+        headers: {
+          'x-api-key': serverApiKey,
+        },
+        credentials: 'include', // Include cookies in the request
       })
 
       if (response.ok) {
@@ -199,9 +206,15 @@ export default function CollectionPage() {
   }
 
   const handleDeleteComment = async (id: string) => {
+    const serverApiKey = 'testkey' // Match the server-side API key
+
     try {
       const response = await fetch(`/api/delete_comment/${id}`, {
         method: 'DELETE',
+        headers: {
+          'x-api-key': serverApiKey,
+        },
+        credentials: 'include', // Include cookies in the request
       })
 
       if (response.ok) {
@@ -321,13 +334,13 @@ export default function CollectionPage() {
   return (
     <div className="relative h-screen w-screen overflow-hidden">
       {/* View Toggle */}
-      <div className="absolute top-4 left-4 z-50 flex bg-white border border-gray-300 rounded-lg shadow-md overflow-hidden">
+      <div className="absolute top-4 left-4 z-50 flex bg-card border border-border rounded-lg shadow-md overflow-hidden">
         <button
           onClick={() => setViewMode('graph')}
           className={`px-4 py-2 text-sm font-medium transition-colors ${
             viewMode === 'graph'
               ? 'bg-blue-600 text-white'
-              : 'text-gray-700 hover:bg-gray-50'
+              : 'text-card-foreground hover:bg-accent'
           }`}
         >
           Graph
@@ -337,7 +350,7 @@ export default function CollectionPage() {
           className={`px-4 py-2 text-sm font-medium transition-colors ${
             viewMode === 'ledger'
               ? 'bg-blue-600 text-white'
-              : 'text-gray-700 hover:bg-gray-50'
+              : 'text-card-foreground hover:bg-accent'
           }`}
         >
           Ledger
@@ -347,7 +360,7 @@ export default function CollectionPage() {
       {/* Settings Button */}
       <button
         onClick={() => setShowSettingsModal(true)}
-        className="absolute top-4 right-4 z-50 p-3 bg-white border border-gray-300 rounded-lg shadow-md hover:shadow-lg transition-all hover:bg-gray-50"
+        className="absolute top-4 right-4 z-50 p-3 bg-card border border-border rounded-lg shadow-md hover:shadow-lg transition-all hover:bg-accent text-card-foreground"
         title="Settings"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -361,14 +374,24 @@ export default function CollectionPage() {
 
       {/* Main Content */}
       {viewMode === 'graph' ? (
-        <UMAPVisualization
-          entries={entries}
-          collection={collection}
-          onNodeClick={handleNodeClick}
-          onCollectionChange={handleCollectionChange}
-          collections={collections}
-          newlyAddedEntryId={newlyAddedEntryId}
-        />
+        <>
+          <UMAPVisualization
+            entries={entries}
+            collection={collection}
+            onNodeClick={handleNodeClick}
+            onCollectionChange={handleCollectionChange}
+            collections={collections}
+            newlyAddedEntryId={newlyAddedEntryId}
+          />
+          {/* QR Code - Bottom Right Corner */}
+          <div className="absolute bottom-4 right-4 z-40">
+            <QRCodeComponent
+              url={typeof window !== 'undefined' ? window.location.href : ''}
+              size={80}
+              className="opacity-80 hover:opacity-100 transition-opacity"
+            />
+          </div>
+        </>
       ) : (
         <LedgerView
           entries={entries}

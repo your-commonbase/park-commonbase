@@ -37,6 +37,57 @@ function UMAPVisualization({
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Check display mode from environment variable
+  const displayMode = process.env.NEXT_PUBLIC_GRAPH_DISPLAY_MODE || 'tooltip'
+
+  // Helper function to truncate text
+  const truncateText = (text: string, maxLength: number = 100) => {
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text
+  }
+
+  // Helper function to add hover effects based on display mode
+  const addHoverEffects = (nodes: d3.Selection<SVGGElement, any, SVGGElement, unknown>) => {
+    if (displayMode === 'tooltip') {
+      // Tooltip mode - show on hover
+      nodes.on('mouseenter', function(event, d) {
+        requestAnimationFrame(() => {
+          d3.select(this).select('circle, rect').attr('stroke-width', 4)
+
+          const tooltip = d3.select('body').append('div')
+            .attr('class', 'tooltip')
+            .style('position', 'absolute')
+            .style('background', 'rgba(0, 0, 0, 0.8)')
+            .style('color', 'white')
+            .style('padding', '8px 12px')
+            .style('border-radius', '4px')
+            .style('font-size', '12px')
+            .style('max-width', '200px')
+            .style('pointer-events', 'none')
+            .style('z-index', '1000')
+            .style('transform', 'translateZ(0)')
+            .text(truncateText(d.entry.data))
+
+          tooltip.style('left', (event.pageX + 10) + 'px')
+            .style('top', (event.pageY + 10) + 'px')
+        })
+      })
+      .on('mouseleave', function(event, d) {
+        requestAnimationFrame(() => {
+          d3.select(this).select('circle, rect').attr('stroke-width', d.entry.id === newlyAddedEntryId ? 4 : 2)
+          d3.selectAll('.tooltip').remove()
+        })
+      })
+    } else {
+      // Text mode - just highlight on hover, text is already visible
+      nodes.on('mouseenter', function(event, d) {
+        d3.select(this).select('circle, rect').attr('stroke-width', 4)
+      })
+      .on('mouseleave', function(event, d) {
+        d3.select(this).select('circle, rect').attr('stroke-width', d.entry.id === newlyAddedEntryId ? 4 : 2)
+      })
+    }
+  }
+
   // Memoize entry IDs to prevent unnecessary re-renders
   const entryIds = useMemo(() => entries.map(e => e.id).join(','), [entries])
   const entryCount = entries.length
@@ -179,30 +230,53 @@ function UMAPVisualization({
           .attr('stroke-width', 2)
       }
 
-      // Add hover effects
-      node.on('mouseenter', function(event) {
-        d3.select(this).select('circle, rect').attr('stroke-width', 4)
-
-        const tooltip = d3.select('body').append('div')
-          .attr('class', 'tooltip')
-          .style('position', 'absolute')
-          .style('background', 'rgba(0, 0, 0, 0.8)')
-          .style('color', 'white')
-          .style('padding', '8px 12px')
-          .style('border-radius', '4px')
-          .style('font-size', '12px')
-          .style('max-width', '200px')
+      // Add text labels if in text mode
+      if (displayMode === 'text') {
+        node.append('text')
+          .attr('x', 0)
+          .attr('y', entry.metadata.type === 'image' ? 30 : 25)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', '10px')
+          .attr('fill', '#333')
+          .attr('font-weight', 'bold')
           .style('pointer-events', 'none')
-          .style('z-index', '1000')
-          .text(entry.data.substring(0, 100) + (entry.data.length > 100 ? '...' : ''))
+          .style('user-select', 'none')
+          .text(truncateText(entry.data, 50))
+      }
 
-        tooltip.style('left', (event.pageX + 10) + 'px')
-          .style('top', (event.pageY + 10) + 'px')
-      })
-      .on('mouseleave', function() {
-        d3.select(this).select('circle, rect').attr('stroke-width', 2)
-        d3.selectAll('.tooltip').remove()
-      })
+      // Add hover effects based on display mode
+      if (displayMode === 'tooltip') {
+        node.on('mouseenter', function(event) {
+          d3.select(this).select('circle, rect').attr('stroke-width', 4)
+
+          const tooltip = d3.select('body').append('div')
+            .attr('class', 'tooltip')
+            .style('position', 'absolute')
+            .style('background', 'rgba(0, 0, 0, 0.8)')
+            .style('color', 'white')
+            .style('padding', '8px 12px')
+            .style('border-radius', '4px')
+            .style('font-size', '12px')
+            .style('max-width', '200px')
+            .style('pointer-events', 'none')
+            .style('z-index', '1000')
+            .text(truncateText(entry.data))
+
+          tooltip.style('left', (event.pageX + 10) + 'px')
+            .style('top', (event.pageY + 10) + 'px')
+        })
+        .on('mouseleave', function() {
+          d3.select(this).select('circle, rect').attr('stroke-width', 2)
+          d3.selectAll('.tooltip').remove()
+        })
+      } else {
+        node.on('mouseenter', function() {
+          d3.select(this).select('circle, rect').attr('stroke-width', 4)
+        })
+        .on('mouseleave', function() {
+          d3.select(this).select('circle, rect').attr('stroke-width', 2)
+        })
+      }
 
       // Add text indicating single entry
       svg.append('text')
@@ -391,8 +465,8 @@ function UMAPVisualization({
 
     // Create color scale for different entry types
     const colorScale = d3.scaleOrdinal()
-      .domain(['text', 'audio', 'image'])
-      .range(['#3b82f6', '#10b981', '#f59e0b'])
+      .domain(['text', 'audio', 'image', 'youtube', 'spotify'])
+      .range(['#3b82f6', '#10b981', '#f59e0b', '#ff0000', '#1ed760'])
 
     // Create main group with zoom/pan behavior
     const g = svg.append('g')
@@ -463,7 +537,7 @@ function UMAPVisualization({
       .attr('fill', d => colorScale('text') as string)
       .attr('fill-opacity', d => d.entry.parentId ? 0.7 : 1) // More transparent for comments
       .attr('stroke', d => d.entry.id === newlyAddedEntryId ? '#ff6b35' : '#fff')
-      .attr('stroke-width', d => d.entry.id === newlyAddedEntryId ? 4 : 2)
+      .attr('stroke-width', (d: any) => d.entry.id === newlyAddedEntryId ? 4 : 2)
 
     // Draw rectangles with thumbnails for image entries
     const imageNodes = nodes.filter(d => d.entry.metadata.type === 'image')
@@ -476,7 +550,7 @@ function UMAPVisualization({
       .attr('fill', d => colorScale('image') as string)
       .attr('fill-opacity', d => d.entry.parentId ? 0.7 : 1) // More transparent for comments
       .attr('stroke', d => d.entry.id === newlyAddedEntryId ? '#ff6b35' : '#fff')
-      .attr('stroke-width', d => d.entry.id === newlyAddedEntryId ? 4 : 2)
+      .attr('stroke-width', (d: any) => d.entry.id === newlyAddedEntryId ? 4 : 2)
       .attr('rx', 4)
 
     imageNodes.append('image')
@@ -496,44 +570,108 @@ function UMAPVisualization({
       .attr('fill', d => colorScale('audio') as string)
       .attr('fill-opacity', d => d.entry.parentId ? 0.7 : 1) // More transparent for comments
       .attr('stroke', d => d.entry.id === newlyAddedEntryId ? '#ff6b35' : '#fff')
-      .attr('stroke-width', d => d.entry.id === newlyAddedEntryId ? 4 : 2)
+      .attr('stroke-width', (d: any) => d.entry.id === newlyAddedEntryId ? 4 : 2)
 
     audioNodes.append('polygon')
       .attr('points', d => d.entry.parentId ? '-3,-4 -3,4 4,0' : '-4,-6 -4,6 6,0') // Smaller play icon for comments
       .attr('fill', '#fff')
       .attr('opacity', d => d.entry.parentId ? 0.8 : 1)
 
-    // Add hover effects with performance optimization
-    nodes.on('mouseenter', function(event, d) {
-      // Use requestAnimationFrame for hover effects
-      requestAnimationFrame(() => {
+    // Draw YouTube nodes (rounded rectangles with play icon)
+    const youtubeNodes = nodes.filter(d => d.entry.metadata.type === 'youtube')
+
+    youtubeNodes.append('rect')
+      .attr('x', d => d.entry.parentId ? -10 : -12)
+      .attr('y', d => d.entry.parentId ? -6 : -8)
+      .attr('width', d => d.entry.parentId ? 20 : 24)
+      .attr('height', d => d.entry.parentId ? 12 : 16)
+      .attr('fill', d => colorScale('youtube') as string)
+      .attr('fill-opacity', d => d.entry.parentId ? 0.7 : 1)
+      .attr('stroke', d => d.entry.id === newlyAddedEntryId ? '#ff6b35' : '#fff')
+      .attr('stroke-width', (d: any) => d.entry.id === newlyAddedEntryId ? 4 : 2)
+      .attr('rx', 2)
+
+    youtubeNodes.append('polygon')
+      .attr('points', d => d.entry.parentId ? '-3,-2 -3,2 2,0' : '-4,-3 -4,3 3,0')
+      .attr('fill', '#fff')
+      .attr('opacity', d => d.entry.parentId ? 0.8 : 1)
+
+    // Draw Spotify nodes (circles with music note-like icon)
+    const spotifyNodes = nodes.filter(d => d.entry.metadata.type === 'spotify')
+
+    spotifyNodes.append('circle')
+      .attr('r', d => d.entry.parentId ? 10 : 12)
+      .attr('fill', d => colorScale('spotify') as string)
+      .attr('fill-opacity', d => d.entry.parentId ? 0.7 : 1)
+      .attr('stroke', d => d.entry.id === newlyAddedEntryId ? '#ff6b35' : '#fff')
+      .attr('stroke-width', (d: any) => d.entry.id === newlyAddedEntryId ? 4 : 2)
+
+    spotifyNodes.append('path')
+      .attr('d', d => d.entry.parentId ?
+        'M-2,-3 C-2,-4 -1,-5 0,-5 C1,-5 2,-4 2,-3 C2,-1 1,0 0,0 C-1,0 -2,-1 -2,-3 M0,0 L0,4 M-1,3 L1,3' :
+        'M-3,-4 C-3,-5 -2,-6 0,-6 C2,-6 3,-5 3,-4 C3,-1 2,1 0,1 C-2,1 -3,-1 -3,-4 M0,1 L0,5 M-2,4 L2,4'
+      )
+      .attr('fill', '#fff')
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 0.5)
+      .attr('opacity', d => d.entry.parentId ? 0.8 : 1)
+
+    // Add interaction effects based on display mode
+    if (displayMode === 'tooltip') {
+      // Add hover effects with performance optimization for tooltip mode
+      nodes.on('mouseenter', function(event, d) {
+        // Use requestAnimationFrame for hover effects
+        requestAnimationFrame(() => {
+          d3.select(this).select('circle, rect').attr('stroke-width', 4)
+
+          // Show tooltip with debouncing
+          const tooltip = d3.select('body').append('div')
+            .attr('class', 'tooltip')
+            .style('position', 'absolute')
+            .style('background', 'rgba(0, 0, 0, 0.8)')
+            .style('color', 'white')
+            .style('padding', '8px 12px')
+            .style('border-radius', '4px')
+            .style('font-size', '12px')
+            .style('max-width', '200px')
+            .style('pointer-events', 'none')
+            .style('z-index', '1000')
+            .style('transform', 'translateZ(0)') // GPU acceleration for tooltip
+            .text(truncateText(d.entry.data))
+
+          tooltip.style('left', (event.pageX + 10) + 'px')
+            .style('top', (event.pageY + 10) + 'px')
+        })
+      })
+      .on('mouseleave', function() {
+        requestAnimationFrame(() => {
+          d3.select(this).select('circle, rect').attr('stroke-width', (d: any) => d.entry.id === newlyAddedEntryId ? 4 : 2)
+          d3.selectAll('.tooltip').remove()
+        })
+      })
+    } else {
+      // Add simple hover effects for text mode (no tooltip)
+      nodes.on('mouseenter', function() {
         d3.select(this).select('circle, rect').attr('stroke-width', 4)
-
-        // Show tooltip with debouncing
-        const tooltip = d3.select('body').append('div')
-          .attr('class', 'tooltip')
-          .style('position', 'absolute')
-          .style('background', 'rgba(0, 0, 0, 0.8)')
-          .style('color', 'white')
-          .style('padding', '8px 12px')
-          .style('border-radius', '4px')
-          .style('font-size', '12px')
-          .style('max-width', '200px')
-          .style('pointer-events', 'none')
-          .style('z-index', '1000')
-          .style('transform', 'translateZ(0)') // GPU acceleration for tooltip
-          .text(d.entry.data.substring(0, 100) + (d.entry.data.length > 100 ? '...' : ''))
-
-        tooltip.style('left', (event.pageX + 10) + 'px')
-          .style('top', (event.pageY + 10) + 'px')
       })
-    })
-    .on('mouseleave', function() {
-      requestAnimationFrame(() => {
-        d3.select(this).select('circle, rect').attr('stroke-width', d => d.entry.id === newlyAddedEntryId ? 4 : 2)
-        d3.selectAll('.tooltip').remove()
+      .on('mouseleave', function() {
+        d3.select(this).select('circle, rect').attr('stroke-width', (d: any) => d.entry.id === newlyAddedEntryId ? 4 : 2)
       })
-    })
+    }
+
+    // Add text labels for text nodes only in text display mode
+    if (displayMode === 'text') {
+      nodes.filter(d => !d.entry.metadata.type || d.entry.metadata.type === 'text')
+        .append('text')
+        .attr('x', 0)
+        .attr('y', d => d.entry.parentId ? 20 : 25) // Position below node
+        .attr('text-anchor', 'middle')
+        .style('font-size', '10px')
+        .style('font-family', 'Arial, sans-serif')
+        .style('fill', 'var(--foreground)')
+        .style('pointer-events', 'none')
+        .text(d => truncateText(d.entry.data))
+    }
 
   }, [entryCount, entryIds, dimensions.width, dimensions.height, collection])
 

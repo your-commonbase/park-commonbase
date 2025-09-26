@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { generateEmbedding } from '@/lib/openai'
 import { validateApiKey } from '@/lib/auth'
+import { detectUrlType, getYouTubeTitle, getSpotifyTitle } from '@/lib/urlUtils'
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,8 +18,47 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Data is required' }, { status: 400 })
     }
 
-    // Generate embedding for the text
-    const embedding = await generateEmbedding(data)
+    // Detect if the text contains a special URL
+    const urlInfo = detectUrlType(data)
+    let finalData = data
+    let finalMetadata = metadata || {}
+
+    if (urlInfo.type === 'youtube' && urlInfo.id) {
+      // Extract title from YouTube
+      const title = await getYouTubeTitle(urlInfo.id)
+      finalData = title
+      finalMetadata = {
+        ...finalMetadata,
+        type: 'youtube',
+        originalUrl: urlInfo.url,
+        embedUrl: urlInfo.embedUrl,
+        videoId: urlInfo.id,
+        title
+      }
+    } else if (urlInfo.type === 'spotify' && urlInfo.id) {
+      // Extract title from Spotify
+      const spotifyType = urlInfo.url?.match(/spotify\.com\/(\w+)\//)?.[1] || 'track'
+      const title = await getSpotifyTitle(spotifyType, urlInfo.id)
+      finalData = title
+      finalMetadata = {
+        ...finalMetadata,
+        type: 'spotify',
+        originalUrl: urlInfo.url,
+        embedUrl: urlInfo.embedUrl,
+        spotifyId: urlInfo.id,
+        spotifyType,
+        title
+      }
+    } else {
+      // Regular text entry
+      finalMetadata = {
+        ...finalMetadata,
+        type: 'text'
+      }
+    }
+
+    // Generate embedding for the final data (title for URLs, original text for regular entries)
+    const embedding = await generateEmbedding(finalData)
 
     // Create entry using raw SQL for vector insertion
     const tableName = process.env.DATABASE_TABLE_NAME || 'entries'
@@ -30,8 +70,8 @@ export async function POST(request: NextRequest) {
 
     const result = await prisma.$queryRawUnsafe(
       insertSQL,
-      data,
-      JSON.stringify(metadata || {}),
+      finalData,
+      JSON.stringify(finalMetadata),
       JSON.stringify(embedding),
       collection,
       parentId || null

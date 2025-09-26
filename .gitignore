@@ -45,3 +45,6 @@ public/audio/*
 public/images/*
 !public/images/.gitkeep
 prisma/dev.db
+
+# sessions
+.sessions.json

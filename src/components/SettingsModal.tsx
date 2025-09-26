@@ -291,30 +291,30 @@ export default function SettingsModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+      <div className="bg-card text-card-foreground rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+        <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Settings size={20} />
             Settings
           </h2>
           <button
             onClick={onClose}
-            className="p-2 text-gray-500 hover:bg-gray-100 rounded"
+            className="p-2 text-muted-foreground hover:bg-accent rounded"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-200">
+        <div className="flex border-b border-border">
           <button
             onClick={() => setActiveTab('collections')}
             className={`px-4 py-2 font-medium ${
               activeTab === 'collections'
                 ? 'border-b-2 border-blue-600 text-blue-600'
-                : 'text-gray-600 hover:text-gray-800'
+                : 'text-muted-foreground hover:text-card-foreground'
             }`}
           >
             Collections
@@ -324,7 +324,7 @@ export default function SettingsModal({
             className={`px-4 py-2 font-medium ${
               activeTab === 'admin'
                 ? 'border-b-2 border-blue-600 text-blue-600'
-                : 'text-gray-600 hover:text-gray-800'
+                : 'text-muted-foreground hover:text-card-foreground'
             }`}
           >
             Admin
@@ -335,7 +335,7 @@ export default function SettingsModal({
               className={`px-4 py-2 font-medium ${
                 activeTab === 'upload'
                   ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-800'
+                  : 'text-muted-foreground hover:text-card-foreground'
               }`}
             >
               Add Entry
@@ -349,14 +349,14 @@ export default function SettingsModal({
           {activeTab === 'collections' && (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Current Collection</label>
+                <label className="block text-sm font-medium text-card-foreground mb-2">Current Collection</label>
                 <select
                   value={collection}
                   onChange={(e) => {
                     onCollectionChange(e.target.value)
                     onClose() // Auto close modal after switching collection
                   }}
-                  className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 bg-input border border-border text-input-foreground rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   {collections.map((col) => (
                     <option key={col} value={col}>
@@ -368,7 +368,7 @@ export default function SettingsModal({
 
               {/* New Collection - Admin Only */}
               {isAdmin && (
-                <div className="border-t border-gray-200 pt-4">
+                <div className="border-t border-border pt-4">
                   {!showNewCollectionForm ? (
                     <button
                       onClick={() => setShowNewCollectionForm(true)}
@@ -383,7 +383,7 @@ export default function SettingsModal({
                         value={newCollectionName}
                         onChange={(e) => setNewCollectionName(e.target.value)}
                         placeholder="Collection name"
-                        className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+                        className="w-full p-2 bg-input border border-border text-input-foreground rounded focus:outline-none focus:ring-2 focus:ring-green-500"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             handleCreateCollection()
@@ -421,7 +421,7 @@ export default function SettingsModal({
               {!isAdmin ? (
                 !showAdminLogin ? (
                   <div className="text-center">
-                    <p className="text-gray-600 mb-4">Admin access required for advanced features</p>
+                    <p className="text-muted-foreground mb-4">Admin access required for advanced features</p>
                     <button
                       onClick={() => setShowAdminLogin(true)}
                       className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
@@ -432,22 +432,22 @@ export default function SettingsModal({
                 ) : (
                   <form onSubmit={handleAdminLogin} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                      <label className="block text-sm font-medium text-card-foreground mb-1">Username</label>
                       <input
                         type="text"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full p-2 bg-input border border-border text-input-foreground rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                         required
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                      <label className="block text-sm font-medium text-card-foreground mb-1">Password</label>
                       <input
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full p-2 bg-input border border-border text-input-foreground rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                         required
                       />
                     </div>
@@ -499,7 +499,7 @@ export default function SettingsModal({
                     className={`px-3 py-2 text-sm font-medium capitalize ${
                       activeUploadTab === tab
                         ? 'border-b-2 border-blue-600 text-blue-600'
-                        : 'text-gray-600 hover:text-gray-800'
+                        : 'text-muted-foreground hover:text-card-foreground'
                     }`}
                   >
                     {tab}
@@ -515,7 +515,7 @@ export default function SettingsModal({
                       value={newEntryText}
                       onChange={(e) => setNewEntryText(e.target.value)}
                       placeholder="Enter your text here..."
-                      className="w-full p-3 border border-gray-300 rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full p-3 bg-input border border-border text-input-foreground rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
                       rows={4}
                     />
                   </div>
@@ -528,7 +528,7 @@ export default function SettingsModal({
                       type="file"
                       accept="image/*"
                       onChange={handleImageFileChange}
-                      className="w-full p-3 border border-gray-300 rounded"
+                      className="w-full p-3 bg-input border border-border text-input-foreground rounded"
                       disabled={isUploading}
                     />
                     {isUploading && (
@@ -544,9 +544,9 @@ export default function SettingsModal({
                       </div>
                     )}
                     {selectedFile && !uploadedImageUrl && !isUploading && (
-                      <p className="text-sm text-gray-600 mt-2">Selected: {selectedFile.name}</p>
+                      <p className="text-sm text-muted-foreground mt-2">Selected: {selectedFile.name}</p>
                     )}
-                    <p className="text-sm text-gray-600 mt-2">Images are hosted on UploadThing and will be automatically captioned using AI</p>
+                    <p className="text-sm text-muted-foreground mt-2">Images are hosted on UploadThing and will be automatically captioned using AI</p>
                   </div>
                 )}
 
@@ -558,7 +558,7 @@ export default function SettingsModal({
                         type="file"
                         accept="audio/*,.m4a,.mp3,.wav,.aac,.ogg,.flac"
                         onChange={handleAudioFileChange}
-                        className="w-full p-3 border border-gray-300 rounded"
+                        className="w-full p-3 bg-input border border-border text-input-foreground rounded"
                         disabled={isUploading}
                       />
                       {isUploading && (
@@ -577,13 +577,13 @@ export default function SettingsModal({
                         </div>
                       )}
                       {selectedFile && !uploadedAudioUrl && !isUploading && (
-                        <p className="text-sm text-gray-600 mt-2">Selected: {selectedFile.name}</p>
+                        <p className="text-sm text-muted-foreground mt-2">Selected: {selectedFile.name}</p>
                       )}
                     </div>
 
                     <div className="relative">
                       <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-gray-300" />
+                        <div className="w-full border-t border-border" />
                       </div>
                       <div className="relative flex justify-center text-sm">
                         <span className="bg-white px-2 text-gray-500">OR</span>
@@ -595,7 +595,7 @@ export default function SettingsModal({
                       disabled={isAddingEntry}
                     />
 
-                    <p className="text-sm text-gray-600">Audio files are hosted on UploadThing and will be automatically transcribed using AI</p>
+                    <p className="text-sm text-muted-foreground">Audio files are hosted on UploadThing and will be automatically transcribed using AI</p>
                   </div>
                 )}
 
@@ -606,7 +606,7 @@ export default function SettingsModal({
                       type="file"
                       accept=".csv"
                       onChange={handleCsvFileChange}
-                      className="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full p-3 bg-input border border-border text-input-foreground rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     {csvFile && (
                       <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
@@ -618,7 +618,7 @@ export default function SettingsModal({
                         </p>
                       </div>
                     )}
-                    <p className="text-sm text-gray-600 mt-2">
+                    <p className="text-sm text-muted-foreground mt-2">
                       Upload a CSV file with "data" and "author" columns for batch entry creation
                     </p>
                   </div>
@@ -632,7 +632,7 @@ export default function SettingsModal({
                       value={authorName}
                       onChange={(e) => setAuthorName(e.target.value)}
                       placeholder="Author name (optional)"
-                      className="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full p-3 bg-input border border-border text-input-foreground rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                 )}

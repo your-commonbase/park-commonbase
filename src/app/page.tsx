@@ -120,21 +120,21 @@ export default function Home() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-muted flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading collections...</p>
+          <p className="mt-4 text-muted-foreground">Loading collections...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Settings Button */}
       <button
         onClick={() => setShowSettingsModal(true)}
-        className="absolute top-4 right-4 z-50 p-3 bg-white border border-gray-300 rounded-lg shadow-md hover:shadow-lg transition-all hover:bg-gray-50"
+        className="absolute top-4 right-4 z-50 p-3 bg-card border border-border rounded-lg shadow-md hover:shadow-lg transition-all hover:bg-accent text-card-foreground"
         title="Settings"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -151,29 +151,29 @@ export default function Home() {
         <div className="max-w-2xl w-full text-center">
           {/* Header */}
           <div className="mb-12">
-            <h1 className="text-5xl font-bold text-gray-900 mb-6">
+            <h1 className="text-5xl font-bold text-foreground mb-6">
               Park Commonbase
             </h1>
-            <p className="text-xl text-gray-600 mb-4">
+            <p className="text-xl text-muted-foreground mb-4">
               An intelligent knowledge management system for organizing and exploring your data
             </p>
-            <p className="text-lg text-gray-500">
+            <p className="text-lg text-muted-foreground">
               Create collections of text, images, and audio. Visualize connections with AI-powered
               semantic clustering and explore your knowledge through interactive graphs or detailed ledgers.
             </p>
           </div>
 
           {/* Collection Selector */}
-          <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-6">
+          <div className="bg-card rounded-lg shadow-lg p-8 mb-8">
+            <h2 className="text-2xl font-semibold text-card-foreground mb-6">
               Choose a Collection
             </h2>
 
             {collections.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-gray-500 mb-4">No collections found</p>
+                <p className="text-muted-foreground mb-4">No collections found</p>
                 {isAdmin && (
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm text-muted-foreground">
                     Create your first collection using the settings menu
                   </p>
                 )}
@@ -184,7 +184,7 @@ export default function Home() {
                   <select
                     value={selectedCollection}
                     onChange={(e) => setSelectedCollection(e.target.value)}
-                    className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-3 text-lg bg-input border border-border text-input-foreground rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     {collections.map((collection) => (
                       <option key={collection.name} value={collection.name}>
@@ -207,45 +207,45 @@ export default function Home() {
 
           {/* Features */}
           <div className="grid md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white rounded-lg p-6 shadow-md">
+            <div className="bg-card rounded-lg p-6 shadow-md">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
                 <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">Graph View</h3>
-              <p className="text-gray-600 text-sm">
+              <h3 className="text-lg font-semibold text-card-foreground mb-2">Graph View</h3>
+              <p className="text-muted-foreground text-sm">
                 Visualize your data as an interactive network using UMAP clustering
               </p>
             </div>
 
-            <div className="bg-white rounded-lg p-6 shadow-md">
+            <div className="bg-card rounded-lg p-6 shadow-md">
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-4">
                 <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">Ledger View</h3>
-              <p className="text-gray-600 text-sm">
+              <h3 className="text-lg font-semibold text-card-foreground mb-2">Ledger View</h3>
+              <p className="text-muted-foreground text-sm">
                 Browse entries in a structured table with metadata and embeddings
               </p>
             </div>
 
-            <div className="bg-white rounded-lg p-6 shadow-md">
+            <div className="bg-card rounded-lg p-6 shadow-md">
               <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center mx-auto mb-4">
                 <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">AI Powered</h3>
-              <p className="text-gray-600 text-sm">
+              <h3 className="text-lg font-semibold text-card-foreground mb-2">AI Powered</h3>
+              <p className="text-muted-foreground text-sm">
                 Automatic transcription, embedding generation, and semantic search
               </p>
             </div>
           </div>
 
           {/* Footer */}
-          <p className="text-gray-400 text-sm">
+          <p className="text-muted-foreground text-sm">
             {isAdmin ? (
               <>Admin access enabled • Use settings to manage collections</>
             ) : (
