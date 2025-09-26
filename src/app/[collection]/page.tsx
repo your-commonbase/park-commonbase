@@ -35,6 +35,7 @@ export default function CollectionPage() {
   const [isAddingEntry, setIsAddingEntry] = useState(false)
   const [newlyAddedEntryId, setNewlyAddedEntryId] = useState<string | undefined>(undefined)
   const [viewMode, setViewMode] = useState<'graph' | 'ledger'>('graph')
+  const [isLoadingEntries, setIsLoadingEntries] = useState(false)
 
   // Check for admin status on page load
   useEffect(() => {
@@ -79,18 +80,31 @@ export default function CollectionPage() {
       })
   }, [])
 
-  // Load data for current collection
+  // Load data for current collection with debouncing
   useEffect(() => {
-    fetch(`/api/collection/${collection}`)
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setEntries(data)
-        }
-      })
-      .catch(error => {
-        console.error('Error loading entries:', error)
-      })
+    setIsLoadingEntries(true)
+
+    // Add a small delay to prevent rapid requests when switching collections
+    const timeoutId = setTimeout(() => {
+      fetch(`/api/collection/${collection}`)
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setEntries(data)
+          }
+        })
+        .catch(error => {
+          console.error('Error loading entries:', error)
+        })
+        .finally(() => {
+          setIsLoadingEntries(false)
+        })
+    }, 100)
+
+    return () => {
+      clearTimeout(timeoutId)
+      setIsLoadingEntries(false)
+    }
   }, [collection])
 
   const handleNodeClick = (entry: Entry) => {
@@ -373,31 +387,42 @@ export default function CollectionPage() {
       </button>
 
       {/* Main Content */}
-      {viewMode === 'graph' ? (
-        <>
-          <UMAPVisualization
-            entries={entries}
-            collection={collection}
-            onNodeClick={handleNodeClick}
-            onCollectionChange={handleCollectionChange}
-            collections={collections}
-            newlyAddedEntryId={newlyAddedEntryId}
-          />
-          {/* QR Code - Bottom Right Corner */}
-          <div className="absolute bottom-4 right-4 z-40">
-            <QRCodeComponent
-              url={typeof window !== 'undefined' ? window.location.href : ''}
-              size={80}
-              className="opacity-80 hover:opacity-100 transition-opacity"
-            />
+      <div className="relative w-full h-full">
+        {isLoadingEntries && (
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <p className="text-sm text-muted-foreground">Loading {collection} entries...</p>
+            </div>
           </div>
-        </>
-      ) : (
-        <LedgerView
-          entries={entries}
-          onEntryClick={handleNodeClick}
-        />
-      )}
+        )}
+
+        {viewMode === 'graph' ? (
+          <>
+            <UMAPVisualization
+              entries={entries}
+              collection={collection}
+              onNodeClick={handleNodeClick}
+              onCollectionChange={handleCollectionChange}
+              collections={collections}
+              newlyAddedEntryId={newlyAddedEntryId}
+            />
+            {/* QR Code - Bottom Right Corner */}
+            <div className="absolute bottom-4 right-4 z-40">
+              <QRCodeComponent
+                url={typeof window !== 'undefined' ? window.location.href : ''}
+                size={80}
+                className="opacity-80 hover:opacity-100 transition-opacity"
+              />
+            </div>
+          </>
+        ) : (
+          <LedgerView
+            entries={entries}
+            onEntryClick={handleNodeClick}
+          />
+        )}
+      </div>
 
       {/* Sidebar */}
       <Sidebar

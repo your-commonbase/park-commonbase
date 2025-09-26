@@ -127,10 +127,175 @@ function UMAPVisualization({
     }
   }, [])
 
-  useEffect(() => {
-    if (!svgRef.current || !entries.length || !dimensions.width) return
+  // Apply UMAP positioning similar to your working project (moved outside useEffect for memoization)
+  const applyUMAPPositioning = useCallback((entries: Entry[]) => {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('UMAP positioning called with', entries.length, 'entries')
+      }
 
-    console.log('UMAP visualization effect triggered with', entries.length, 'entries')
+      if (entries.length < 2) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Not enough entries, using centered position')
+        }
+        return entries.map((entry, index) => ({
+          entry,
+          position: [0, 0] as [number, number]
+        }))
+      }
+
+      // Extract embeddings (they come as arrays from the API)
+      const validEntries: Entry[] = []
+      const validEmbeddings: number[][] = []
+
+      entries.forEach((entry, index) => {
+        const embedding = entry.embedding
+
+        console.log(`Entry ${entry.id}: embedding type=${typeof embedding}, isArray=${Array.isArray(embedding)}, length=${Array.isArray(embedding) ? embedding.length : 'N/A'}`)
+
+        if (!Array.isArray(embedding) || embedding.length === 0) {
+          console.warn(`Entry ${entry.id}: Invalid embedding - not an array or empty`, {
+            type: typeof embedding,
+            isArray: Array.isArray(embedding),
+            length: embedding?.length,
+            sample: embedding?.slice?.(0, 3)
+          })
+          return
+        }
+
+        // Validate that all values are numbers
+        const validEmb = embedding.filter(val => typeof val === 'number' && !isNaN(val))
+        if (validEmb.length !== embedding.length) {
+          console.warn(`Entry ${entry.id}: filtered ${embedding.length - validEmb.length} invalid values from embedding`)
+        }
+
+        if (validEmb.length > 0) {
+          console.log(`Entry ${entry.id}: Using embedding with ${validEmb.length} dimensions, sample:`, validEmb.slice(0, 5))
+          validEntries.push(entry)
+          validEmbeddings.push(validEmb)
+        } else {
+          console.warn(`Entry ${entry.id}: No valid embedding values`)
+        }
+      })
+
+      console.log(`Using ${validEntries.length} entries with valid embeddings out of ${entries.length} total`)
+      console.log('Embedding matrix size:', validEmbeddings.length, 'x', validEmbeddings[0]?.length)
+
+      if (validEmbeddings.length < 2) {
+        console.log('Not enough valid embeddings, using manual positioning')
+        return entries.map((entry, index) => ({
+          entry,
+          position: [index * 100 - 50, 0] as [number, number]
+        }))
+      }
+
+      // For 2 entries, use simple positioning
+      if (validEmbeddings.length === 2) {
+        return [
+          { entry: validEntries[0], position: [-1, 0] as [number, number] },
+          { entry: validEntries[1], position: [1, 0] as [number, number] }
+        ]
+      }
+
+      // 2D UMAP parameters optimized for performance and spread
+      const umap = new UMAP({
+        nComponents: 2,
+        nNeighbors: Math.min(8, Math.max(2, Math.floor(validEmbeddings.length * 0.1))),
+        minDist: 0.3, // Increased for more spread
+        spread: 2.0,  // Increased for more spread
+        nEpochs: Math.min(100, Math.max(50, validEmbeddings.length * 2)), // Adaptive epochs for performance
+        learningRate: 1.0,
+        random: Math.random, // Use proper random function
+      })
+
+      console.log('Starting UMAP fit with real embeddings...')
+      console.log('UMAP config:', {
+        nComponents: 2,
+        nNeighbors: Math.min(10, Math.max(2, Math.floor(validEmbeddings.length * 0.15))),
+        minDist: 0.3,
+        spread: 2.0,
+        embeddingCount: validEmbeddings.length,
+        embeddingDims: validEmbeddings[0]?.length
+      })
+
+      let positions
+      try {
+        positions = umap.fit(validEmbeddings) // Use the REAL embeddings
+        console.log('UMAP SUCCESS! Generated positions:', positions.length, 'First 3 positions:', positions.slice(0, 3))
+
+        // Verify the positions look reasonable
+        const xValues = positions.map(p => p[0])
+        const yValues = positions.map(p => p[1])
+        console.log('Position ranges:', {
+          x: [Math.min(...xValues), Math.max(...xValues)],
+          y: [Math.min(...yValues), Math.max(...yValues)]
+        })
+        console.log('First 3 actual positions:')
+        positions.slice(0, 3).forEach((pos, i) => {
+          console.log(`  Position ${i}: [${pos[0]}, ${pos[1]}]`)
+        })
+
+      } catch (error) {
+        console.error('UMAP failed, using fallback positioning:', error)
+        // Fallback to circle layout
+        return validEntries.map((entry, index) => {
+          const angle = (index / validEntries.length) * 2 * Math.PI
+          return {
+            entry,
+            position: [Math.cos(angle), Math.sin(angle)] as [number, number]
+          }
+        })
+      }
+
+      // Return positioned entries (only those with valid embeddings)
+      const positionedEntries = validEntries.map((entry, index) => ({
+        entry,
+        position: positions[index] || [0, 0] as [number, number]
+      }))
+
+      // Add entries without valid embeddings at random positions
+      const remainingEntries = entries.filter(entry =>
+        !validEntries.some(validEntry => validEntry.id === entry.id)
+      )
+
+      remainingEntries.forEach((entry, index) => {
+        const angle = (index / remainingEntries.length) * 2 * Math.PI
+        positionedEntries.push({
+          entry,
+          position: [Math.cos(angle) * 3, Math.sin(angle) * 3] as [number, number] // Place further out
+        })
+      })
+
+      return positionedEntries
+    }, []) // No dependencies since this is a pure function
+
+  // Memoize UMAP positioning to avoid recalculation on every render
+  const positionedEntries = useMemo(() => {
+    if (!entries.length) return []
+
+    // Flatten entries to include comments as separate nodes
+    const allEntries: Entry[] = []
+    entries.forEach(entry => {
+      // Add main entry
+      allEntries.push(entry)
+
+      // Add all comments as separate entries
+      if (entry.comments && entry.comments.length > 0) {
+        entry.comments.forEach(comment => {
+          allEntries.push(comment)
+        })
+      }
+    })
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('UMAP positioning memoized calculation with', entries.length, 'entries, flattened to', allEntries.length)
+    }
+    return applyUMAPPositioning(allEntries)
+  }, [entries, applyUMAPPositioning]) // Only recalculate when entries change
+
+  useEffect(() => {
+    if (!svgRef.current || !positionedEntries.length || !dimensions.width) return
+
+    console.log('UMAP visualization rendering with', positionedEntries.length, 'positioned entries')
 
     const svg = d3.select(svgRef.current)
     svg.selectAll('*').remove()
@@ -149,23 +314,7 @@ function UMAPVisualization({
       .attr('d', 'M 0,0 L -5,-3 L -5,3 z')
       .attr('fill', '#94a3b8')
 
-    // Flatten entries to include comments as separate nodes
-    const allEntries: Entry[] = []
-    entries.forEach(entry => {
-      // Add main entry
-      allEntries.push(entry)
-
-      // Add all comments as separate entries
-      if (entry.comments && entry.comments.length > 0) {
-        entry.comments.forEach(comment => {
-          allEntries.push(comment)
-        })
-      }
-    })
-
-    console.log(`Flattened ${entries.length} main entries into ${allEntries.length} total entries (including comments)`)
-
-    if (allEntries.length === 0) {
+    if (positionedEntries.length === 0) {
       // Show message when no entries
       svg.append('text')
         .attr('x', dimensions.width / 2)
@@ -178,13 +327,13 @@ function UMAPVisualization({
     }
 
     // Handle single entry case - just center it
-    if (allEntries.length === 1) {
+    if (positionedEntries.length === 1) {
       const g = svg.append('g')
 
       const centerX = dimensions.width / 2
       const centerY = dimensions.height / 2
 
-      const entry = allEntries[0]
+      const entry = positionedEntries[0].entry
       const node = g.append('g')
         .attr('class', 'node')
         .attr('transform', `translate(${centerX}, ${centerY})`)
@@ -290,166 +439,25 @@ function UMAPVisualization({
       return
     }
 
-    // Apply UMAP positioning similar to your working project
-    const applyUMAPPositioning = (entries: Entry[]) => {
-      console.log('UMAP positioning called with', entries.length, 'entries')
+    // Flatten entries to include comments as separate nodes
+    const allEntries: Entry[] = []
+    entries.forEach(entry => {
+      // Add main entry
+      allEntries.push(entry)
 
-      if (entries.length < 2) {
-        console.log('Not enough entries, using centered position')
-        return entries.map((entry, index) => ({
-          entry,
-          position: [0, 0] as [number, number]
-        }))
-      }
-
-      // Extract embeddings (they come as arrays from the API)
-      const validEntries: Entry[] = []
-      const validEmbeddings: number[][] = []
-
-      entries.forEach((entry, index) => {
-        const embedding = entry.embedding
-
-        console.log(`Entry ${entry.id}: embedding type=${typeof embedding}, isArray=${Array.isArray(embedding)}, length=${Array.isArray(embedding) ? embedding.length : 'N/A'}`)
-
-        if (!Array.isArray(embedding) || embedding.length === 0) {
-          console.warn(`Entry ${entry.id}: Invalid embedding - not an array or empty`, {
-            type: typeof embedding,
-            isArray: Array.isArray(embedding),
-            length: embedding?.length,
-            sample: embedding?.slice?.(0, 3)
-          })
-          return
-        }
-
-        // Validate that all values are numbers
-        const validEmb = embedding.filter(val => typeof val === 'number' && !isNaN(val))
-        if (validEmb.length !== embedding.length) {
-          console.warn(`Entry ${entry.id}: filtered ${embedding.length - validEmb.length} invalid values from embedding`)
-        }
-
-        if (validEmb.length > 0) {
-          console.log(`Entry ${entry.id}: Using embedding with ${validEmb.length} dimensions, sample:`, validEmb.slice(0, 5))
-          validEntries.push(entry)
-          validEmbeddings.push(validEmb)
-        } else {
-          console.warn(`Entry ${entry.id}: No valid embedding values`)
-        }
-      })
-
-      console.log(`Using ${validEntries.length} entries with valid embeddings out of ${entries.length} total`)
-      console.log('Embedding matrix size:', validEmbeddings.length, 'x', validEmbeddings[0]?.length)
-
-      if (validEmbeddings.length < 2) {
-        console.log('Not enough valid embeddings, using manual positioning')
-        return entries.map((entry, index) => ({
-          entry,
-          position: [index * 100 - 50, 0] as [number, number]
-        }))
-      }
-
-      // For 2 entries, use simple positioning
-      if (validEmbeddings.length === 2) {
-        return [
-          { entry: validEntries[0], position: [-1, 0] as [number, number] },
-          { entry: validEntries[1], position: [1, 0] as [number, number] }
-        ]
-      }
-
-      // 2D UMAP parameters optimized for better spread
-      const umap = new UMAP({
-        nComponents: 2,
-        nNeighbors: Math.min(10, Math.max(2, Math.floor(validEmbeddings.length * 0.15))),
-        minDist: 0.3, // Increased for more spread
-        spread: 2.0,  // Increased for more spread
-        nEpochs: 200, // Reduced epochs to avoid infinite loops
-        learningRate: 1.0,
-        random: Math.random, // Use proper random function
-      })
-
-      console.log('Starting UMAP fit with real embeddings...')
-      console.log('UMAP config:', {
-        nComponents: 2,
-        nNeighbors: Math.min(10, Math.max(2, Math.floor(validEmbeddings.length * 0.15))),
-        minDist: 0.3,
-        spread: 2.0,
-        embeddingCount: validEmbeddings.length,
-        embeddingDims: validEmbeddings[0]?.length
-      })
-
-      let positions
-      try {
-        positions = umap.fit(validEmbeddings) // Use the REAL embeddings
-        console.log('UMAP SUCCESS! Generated positions:', positions.length, 'First 3 positions:', positions.slice(0, 3))
-
-        // Verify the positions look reasonable
-        const xValues = positions.map(p => p[0])
-        const yValues = positions.map(p => p[1])
-        console.log('Position ranges:', {
-          x: [Math.min(...xValues), Math.max(...xValues)],
-          y: [Math.min(...yValues), Math.max(...yValues)]
-        })
-        console.log('First 3 actual positions:')
-        positions.slice(0, 3).forEach((pos, i) => {
-          console.log(`  Position ${i}: [${pos[0]}, ${pos[1]}]`)
-        })
-
-      } catch (error) {
-        console.error('UMAP failed, using fallback positioning:', error)
-        // Fallback to circle layout
-        return validEntries.map((entry, index) => {
-          const angle = (index / validEntries.length) * 2 * Math.PI
-          return {
-            entry,
-            position: [Math.cos(angle), Math.sin(angle)] as [number, number]
-          }
+      // Add all comments as separate entries
+      if (entry.comments && entry.comments.length > 0) {
+        entry.comments.forEach(comment => {
+          allEntries.push(comment)
         })
       }
-
-      // Return positioned entries (only those with valid embeddings)
-      const positionedEntries = validEntries.map((entry, index) => ({
-        entry,
-        position: positions[index] || [0, 0] as [number, number]
-      }))
-
-      // Add entries without valid embeddings at random positions
-      const remainingEntries = entries.filter(entry =>
-        !validEntries.some(validEntry => validEntry.id === entry.id)
-      )
-
-      remainingEntries.forEach((entry, index) => {
-        const angle = (index / remainingEntries.length) * 2 * Math.PI
-        positionedEntries.push({
-          entry,
-          position: [Math.cos(angle) * 3, Math.sin(angle) * 3] as [number, number] // Place further out
-        })
-      })
-
-      return positionedEntries
-    }
-
-    // Get positioned entries
-    const positionedEntries = applyUMAPPositioning(allEntries)
-
-    console.log(`UMAP returned ${positionedEntries.length} positioned entries for ${allEntries.length} total entries`)
-
-    // Create a position lookup map by entry ID
-    const positionMap = new Map<string, [number, number]>()
-    positionedEntries.forEach(p => {
-      positionMap.set(p.entry.id, p.position)
     })
 
-    // Ensure we have positions for all entries, using fallback for missing ones
-    const umapResult: [number, number][] = allEntries.map((entry, index) => {
-      const position = positionMap.get(entry.id)
-      if (position) {
-        return position
-      } else {
-        console.warn(`No UMAP position found for entry ${entry.id}, using fallback position`)
-        // Fallback: place in a circle around origin
-        const angle = (index / allEntries.length) * 2 * Math.PI
-        return [Math.cos(angle) * 2, Math.sin(angle) * 2] as [number, number]
-      }
-    })
+    // Extract positions and entries from memoized positioned entries
+    const umapResult: [number, number][] = positionedEntries.map(({ position }) => position)
+    const flattenedEntries = positionedEntries.map(({ entry }) => entry)
+
+    console.log(`Using ${positionedEntries.length} positioned entries`)
 
     // Create scales
     const xExtent = d3.extent(umapResult, d => d[0]) as [number, number]
@@ -494,9 +502,9 @@ function UMAPVisualization({
       .text('Drag to pan • Scroll to zoom')
 
     // Draw lines connecting comments to their parent entries
-    allEntries.forEach((entry, entryIndex) => {
+    flattenedEntries.forEach((entry, entryIndex) => {
       if (entry.parentId) {
-        const parentIndex = allEntries.findIndex(e => e.id === entry.parentId)
+        const parentIndex = flattenedEntries.findIndex(e => e.id === entry.parentId)
         if (parentIndex >= 0 && umapResult[parentIndex] && umapResult[entryIndex]) {
           const [parentX, parentY] = umapResult[parentIndex]
           const [commentX, commentY] = umapResult[entryIndex]
@@ -516,7 +524,7 @@ function UMAPVisualization({
 
     // Draw nodes for all entries (including comments)
     const nodes = g.selectAll('.node')
-      .data(allEntries.map((entry, i) => ({ entry, position: umapResult[i] })).filter(d => d.position))
+      .data(flattenedEntries.map((entry, i) => ({ entry, position: umapResult[i] })).filter(d => d.position))
       .enter()
       .append('g')
       .attr('class', 'node')
@@ -673,7 +681,7 @@ function UMAPVisualization({
         .text(d => truncateText(d.entry.data))
     }
 
-  }, [entryCount, entryIds, dimensions.width, dimensions.height, collection])
+  }, [positionedEntries, dimensions.width, dimensions.height, collection, newlyAddedEntryId])
 
   return (
     <div className="relative w-full h-full">
