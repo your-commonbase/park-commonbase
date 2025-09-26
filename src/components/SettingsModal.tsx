@@ -5,6 +5,7 @@ import { X, Settings, Upload, Home } from 'lucide-react'
 import AudioRecorder from '@/components/AudioRecorder'
 import { useUploadThing } from '@/lib/uploadthing-client'
 import { parseAuthorInput } from '@/lib/authorUtils'
+import Link from 'next/link'
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -307,13 +308,13 @@ export default function SettingsModal({
             Settings
           </h2>
           <div className="flex items-center gap-2">
-            <a
+            <Link
               href="/"
               className="p-2 text-muted-foreground hover:bg-accent hover:text-card-foreground rounded transition-colors"
               title="Go to Homepage"
             >
               <Home size={20} />
-            </a>
+            </Link>
             <button
               onClick={onClose}
               className="p-2 text-muted-foreground hover:bg-accent rounded"
