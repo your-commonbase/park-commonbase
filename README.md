@@ -2,6 +2,12 @@
 
 Park Commonbase is a web application that captures voice memos, images, and text notes from people at the park and visualizes them in a UMAP (Uniform Manifold Approximation and Projection) space. The application uses AI to process content and create meaningful connections between entries.
 
+## Quick Deploy
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fyour-username%2Fpark-commonbase&env=DATABASE_URL,OPENAI_API_KEY,API_KEY,NEXT_PUBLIC_API_KEY,ADMIN_USERNAME,ADMIN_PASSWORD&envDescription=Configure%20your%20database%20and%20API%20keys&envLink=https%3A%2F%2Fgithub.com%2Fyour-username%2Fpark-commonbase%2Fblob%2Fmain%2FDEPLOYMENT.md&demo-title=Park%20Commonbase&demo-description=AI-powered%20knowledge%20management%20for%20communities)
+
+📋 **[Full Deployment Guide](DEPLOYMENT.md)** - Step-by-step instructions for Vercel + Supabase deployment
+
 ## Features
 
 - **Multi-modal Input**: Accept text notes, voice recordings, and images

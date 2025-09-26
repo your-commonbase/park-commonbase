@@ -154,12 +154,8 @@ export default function Home() {
             <h1 className="text-5xl font-bold text-foreground mb-6">
               Park Commonbase
             </h1>
-            <p className="text-xl text-muted-foreground mb-4">
-              An intelligent knowledge management system for organizing and exploring your data
-            </p>
-            <p className="text-lg text-muted-foreground">
-              Create collections of text, images, and audio. Visualize connections with AI-powered
-              semantic clustering and explore your knowledge through interactive graphs or detailed ledgers.
+            <p className="text-lg text-muted-foreground leading-relaxed">
+              Are you curious about what your fellow park-goers are thinking? What if you have something in common? Find out by adding an entry. You can write some text or air drop me a voice memo, an image, a Spotify link or YouTube video, or even leave a comment on an existing entry. You can add your Instagram handle if you want to be found later by other people. Then explore what has already been added by going through the graph and tapping on the nodes that people have already added. If you want to see this graph later, you can copy the permalink by scanning the QR code on the bottom right. You can make your own here and start the GitHub repo that powers part common base or follow us on Instagram.
             </p>
           </div>
 
@@ -205,44 +201,6 @@ export default function Home() {
             )}
           </div>
 
-          {/* Features */}
-          <div className="grid md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-card rounded-lg p-6 shadow-md">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-card-foreground mb-2">Graph View</h3>
-              <p className="text-muted-foreground text-sm">
-                Visualize your data as an interactive network using UMAP clustering
-              </p>
-            </div>
-
-            <div className="bg-card rounded-lg p-6 shadow-md">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-card-foreground mb-2">Ledger View</h3>
-              <p className="text-muted-foreground text-sm">
-                Browse entries in a structured table with metadata and embeddings
-              </p>
-            </div>
-
-            <div className="bg-card rounded-lg p-6 shadow-md">
-              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-card-foreground mb-2">AI Powered</h3>
-              <p className="text-muted-foreground text-sm">
-                Automatic transcription, embedding generation, and semantic search
-              </p>
-            </div>
-          </div>
 
           {/* Footer */}
           <p className="text-muted-foreground text-sm">

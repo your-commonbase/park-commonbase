@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { X, Settings, Upload } from 'lucide-react'
 import AudioRecorder from '@/components/AudioRecorder'
 import { useUploadThing } from '@/lib/uploadthing-client'
+import { parseAuthorInput } from '@/lib/authorUtils'
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -118,11 +119,12 @@ export default function SettingsModal({
 
     try {
       if (activeUploadTab === 'text') {
+        const authorData = parseAuthorInput(authorName)
         await onAddEntry({
           data: newEntryText,
           metadata: {
             type: 'text',
-            author: authorName.trim() ? { name: authorName.trim() } : undefined,
+            author: Object.keys(authorData).length > 0 ? authorData : undefined,
           },
           collection,
         }, 'text')
@@ -132,9 +134,10 @@ export default function SettingsModal({
           const formData = new FormData()
           formData.append('uploadthingUrl', uploadedImageUrl)
           formData.append('collection', collection)
-          if (authorName.trim()) {
+          const authorData = parseAuthorInput(authorName)
+          if (Object.keys(authorData).length > 0) {
             formData.append('metadata', JSON.stringify({
-              author: { name: authorName.trim() }
+              author: authorData
             }))
           }
           await onAddEntry(formData, 'image')
@@ -143,9 +146,10 @@ export default function SettingsModal({
           const formData = new FormData()
           formData.append('image', selectedFile)
           formData.append('collection', collection)
-          if (authorName.trim()) {
+          const authorData = parseAuthorInput(authorName)
+          if (Object.keys(authorData).length > 0) {
             formData.append('metadata', JSON.stringify({
-              author: { name: authorName.trim() }
+              author: authorData
             }))
           }
           await onAddEntry(formData, 'image')
@@ -156,9 +160,10 @@ export default function SettingsModal({
           const formData = new FormData()
           formData.append('uploadthingUrl', uploadedAudioUrl)
           formData.append('collection', collection)
-          if (authorName.trim()) {
+          const authorData = parseAuthorInput(authorName)
+          if (Object.keys(authorData).length > 0) {
             formData.append('metadata', JSON.stringify({
-              author: { name: authorName.trim() }
+              author: authorData
             }))
           }
           await onAddEntry(formData, 'audio')
@@ -167,9 +172,10 @@ export default function SettingsModal({
           const formData = new FormData()
           formData.append('audio', selectedFile)
           formData.append('collection', collection)
-          if (authorName.trim()) {
+          const authorData = parseAuthorInput(authorName)
+          if (Object.keys(authorData).length > 0) {
             formData.append('metadata', JSON.stringify({
-              author: { name: authorName.trim() }
+              author: authorData
             }))
           }
           await onAddEntry(formData, 'audio')
@@ -204,9 +210,10 @@ export default function SettingsModal({
       const formData = new FormData()
       formData.append('audio', audioFile)
       formData.append('collection', collection)
-      if (authorName.trim()) {
+      const authorData = parseAuthorInput(authorName)
+      if (Object.keys(authorData).length > 0) {
         formData.append('metadata', JSON.stringify({
-          author: { name: authorName.trim() }
+          author: authorData
         }))
       }
 
@@ -631,7 +638,7 @@ export default function SettingsModal({
                       type="text"
                       value={authorName}
                       onChange={(e) => setAuthorName(e.target.value)}
-                      placeholder="Author name (optional)"
+                      placeholder="Your name or @instagram (optional)"
                       className="w-full p-3 bg-input border border-border text-input-foreground rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>

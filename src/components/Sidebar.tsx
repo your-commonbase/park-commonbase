@@ -223,9 +223,19 @@ export default function Sidebar({
                   <p>Name: {entry.metadata.author.name}</p>
                 )}
                 {entry.metadata.author.instagram && (
-                  <p>Instagram: @{entry.metadata.author.instagram}</p>
+                  <p>
+                    Instagram:
+                    <a
+                      href={`https://instagram.com/${entry.metadata.author.instagram}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline ml-1"
+                    >
+                      @{entry.metadata.author.instagram}
+                    </a>
+                  </p>
                 )}
-                {entry.metadata.author.url && (
+                {entry.metadata.author.url && entry.metadata.author.url !== `https://instagram.com/${entry.metadata.author.instagram}` && (
                   <p>URL: <a href={entry.metadata.author.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{entry.metadata.author.url}</a></p>
                 )}
               </div>
