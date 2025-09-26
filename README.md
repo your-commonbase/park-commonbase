@@ -136,9 +136,15 @@ curl -X POST http://localhost:3000/api/add_audio \
 
 ## File Storage
 
-- Audio files are stored in `public/audio/`
-- Image files are stored in `public/images/`
-- Database is SQLite stored in `prisma/dev.db`
+### Development
+- Audio files are stored locally in `public/audio/`
+- Image files are stored locally in `public/images/`
+- Database uses PostgreSQL (local or Supabase)
+
+### Production
+- **UploadThing** handles file uploads (images and audio)
+- Files are served from UploadThing's CDN for better performance
+- Database uses Supabase PostgreSQL with pgvector extension
 
 ## Development
 
@@ -149,7 +155,9 @@ curl -X POST http://localhost:3000/api/add_audio \
 
 ## Production Notes
 
+- **UploadThing** is pre-configured for file storage (no S3 setup needed)
+- **Supabase** provides PostgreSQL with pgvector extension
+- **Vercel** deployment is fully supported with one-click deploy
 - Set up proper environment variables for production
 - Consider using Redis for session storage instead of in-memory
-- Configure proper file storage (AWS S3, etc.) for production
-- Set up database backups and monitoring
+- Set up database backups and monitoring through Supabase

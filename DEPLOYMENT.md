@@ -118,16 +118,12 @@ NEXT_PUBLIC_API_KEY=your-secure-random-api-key-here
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=your-secure-admin-password-here
 
+# UploadThing Configuration (REQUIRED for file uploads)
+UPLOADTHING_TOKEN=your-uploadthing-token-here
+UPLOADTHING_APP_NAME=your-uploadthing-app-name-here
+
 # Graph Display Configuration
 NEXT_PUBLIC_GRAPH_DISPLAY_MODE=tooltip
-```
-
-#### Optional Environment Variables (for file uploads)
-
-```bash
-# UploadThing Configuration (optional)
-UPLOADTHING_TOKEN=your-uploadthing-token
-UPLOADTHING_APP_NAME=your-uploadthing-app-name
 ```
 
 ### Generate Secure Keys
