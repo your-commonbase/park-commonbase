@@ -108,16 +108,16 @@ export default function Sidebar({
   if (!isOpen || !entry) return null
 
   return (
-    <div className="fixed inset-y-0 right-0 w-96 bg-background border-l border-gray-200 shadow-lg z-50 transform transition-transform duration-300 ease-in-out">
+    <div className="fixed inset-y-0 right-0 w-96 bg-background border-l border-border shadow-lg z-50 transform transition-transform duration-300 ease-in-out">
       <div className="flex flex-col h-full">
         {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b border-gray-200">
+        <div className="flex justify-between items-center p-4 border-b border-border">
           <h2 className="text-lg font-semibold">Entry Details</h2>
           <div className="flex gap-2">
             {isAdmin && (
               <button
                 onClick={() => onDeleteEntry(entry.id)}
-                className="p-2 text-red-600 hover:bg-red-50 rounded"
+                className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950 rounded"
                 title="Delete Entry"
               >
                 <Trash2 size={16} />
@@ -125,7 +125,7 @@ export default function Sidebar({
             )}
             <button
               onClick={onClose}
-              className="p-2 text-gray-500 hover:bg-gray-100 rounded"
+              className="p-2 text-muted-foreground hover:bg-muted rounded"
             >
               <X size={16} />
             </button>
@@ -200,14 +200,14 @@ export default function Sidebar({
                entry.metadata.type === 'spotify' ? 'Track/Playlist:' :
                'Content:'}
             </h3>
-            <p className="text-gray-700 whitespace-pre-wrap">{entry.data}</p>
+            <p className="text-foreground whitespace-pre-wrap">{entry.data}</p>
           </div>
 
           {/* Metadata */}
           {entry.metadata.author && (
             <div className="mb-6">
               <h3 className="font-medium mb-2">Author:</h3>
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-muted-foreground">
                 {entry.metadata.author.name && (
                   <p>Name: {entry.metadata.author.name}</p>
                 )}
@@ -232,13 +232,13 @@ export default function Sidebar({
           )}
 
           {/* Timestamps */}
-          <div className="mb-6 text-sm text-gray-500">
+          <div className="mb-6 text-sm text-muted-foreground">
             <p>Created: {new Date(entry.createdAt).toLocaleString()}</p>
             <p>Updated: {new Date(entry.updatedAt).toLocaleString()}</p>
           </div>
 
           {/* Comments */}
-          <div className="border-t border-gray-200 pt-6">
+          <div className="border-t border-border pt-6">
             <h3 className="font-medium mb-4">Comments ({entry.comments?.length || 0})</h3>
 
             {/* Add Comment Form (only in admin mode) */}
@@ -248,7 +248,7 @@ export default function Sidebar({
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   placeholder="Add a comment..."
-                  className="w-full p-3 border border-gray-300 rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-3 border border-border bg-background text-foreground rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
                   rows={3}
                   disabled={isAddingComment}
                 />
@@ -265,7 +265,7 @@ export default function Sidebar({
             {/* Comments List */}
             <div className="space-y-3">
               {entry.comments?.map((comment) => (
-                <div key={comment.id} className="p-3 bg-gray-50 rounded border">
+                <div key={comment.id} className="p-3 bg-muted rounded border border-border">
                   <div className="flex justify-between items-start mb-2">
                     <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                       comment.metadata.type === 'audio' ? 'bg-green-100 text-green-800' :
@@ -304,8 +304,8 @@ export default function Sidebar({
                     </div>
                   )}
 
-                  <p className="text-sm text-gray-700 mb-1">{comment.data}</p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-sm text-foreground mb-1">{comment.data}</p>
+                  <p className="text-xs text-muted-foreground">
                     {new Date(comment.createdAt).toLocaleString()}
                   </p>
                 </div>

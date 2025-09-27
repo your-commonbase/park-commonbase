@@ -51,33 +51,33 @@ export default function LedgerView({ entries, onEntryClick }: LedgerViewProps) {
   )
 
   return (
-    <div className="w-full h-full overflow-auto bg-white">
+    <div className="w-full h-full overflow-auto bg-background">
       <div className="p-4">
         <div className="mb-4">
-          <h2 className="text-xl font-bold text-gray-800">Collection Ledger</h2>
-          <p className="text-sm text-gray-600">{entries.length} entries total</p>
+          <h2 className="text-xl font-bold text-foreground">Collection Ledger</h2>
+          <p className="text-sm text-muted-foreground">{entries.length} entries total</p>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse border border-gray-300 text-sm">
+          <table className="w-full border-collapse border border-border text-sm">
             <thead>
-              <tr className="bg-gray-50">
-                <th className="border border-gray-300 px-4 py-2 text-left font-medium text-gray-700">
+              <tr className="bg-muted">
+                <th className="border border-border px-4 py-2 text-left font-medium text-muted-foreground">
                   Type
                 </th>
-                <th className="border border-gray-300 px-4 py-2 text-left font-medium text-gray-700">
+                <th className="border border-border px-4 py-2 text-left font-medium text-muted-foreground">
                   Description
                 </th>
-                <th className="border border-gray-300 px-4 py-2 text-left font-medium text-gray-700">
+                <th className="border border-border px-4 py-2 text-left font-medium text-muted-foreground">
                   Author
                 </th>
-                <th className="border border-gray-300 px-4 py-2 text-left font-medium text-gray-700">
+                <th className="border border-border px-4 py-2 text-left font-medium text-muted-foreground">
                   Created At
                 </th>
-                <th className="border border-gray-300 px-4 py-2 text-left font-medium text-gray-700">
+                <th className="border border-border px-4 py-2 text-left font-medium text-muted-foreground">
                   Embedding (first 3)
                 </th>
-                <th className="border border-gray-300 px-4 py-2 text-left font-medium text-gray-700">
+                <th className="border border-border px-4 py-2 text-left font-medium text-muted-foreground">
                   Comments
                 </th>
               </tr>
@@ -86,10 +86,10 @@ export default function LedgerView({ entries, onEntryClick }: LedgerViewProps) {
               {sortedEntries.map((entry) => (
                 <tr
                   key={entry.id}
-                  className="hover:bg-gray-50 cursor-pointer transition-colors"
+                  className="hover:bg-muted cursor-pointer transition-colors"
                   onClick={() => onEntryClick(entry)}
                 >
-                  <td className="border border-gray-300 px-4 py-2">
+                  <td className="border border-border px-4 py-2">
                     <span className={`inline-block w-2 h-2 rounded-full mr-2 ${
                       getEntryType(entry.metadata) === 'image' ? 'bg-yellow-500' :
                       getEntryType(entry.metadata) === 'audio' ? 'bg-green-500' :
@@ -97,25 +97,25 @@ export default function LedgerView({ entries, onEntryClick }: LedgerViewProps) {
                     }`}></span>
                     {getEntryType(entry.metadata)}
                   </td>
-                  <td className="border border-gray-300 px-4 py-2 max-w-md">
+                  <td className="border border-border px-4 py-2 max-w-md">
                     {truncateText(entry.data)}
                   </td>
-                  <td className="border border-gray-300 px-4 py-2">
+                  <td className="border border-border px-4 py-2">
                     {getAuthor(entry.metadata)}
                   </td>
-                  <td className="border border-gray-300 px-4 py-2 whitespace-nowrap">
+                  <td className="border border-border px-4 py-2 whitespace-nowrap">
                     {formatDate(entry.createdAt)}
                   </td>
-                  <td className="border border-gray-300 px-4 py-2 font-mono text-xs">
+                  <td className="border border-border px-4 py-2 font-mono text-xs">
                     {formatEmbedding(entry.embedding)}
                   </td>
-                  <td className="border border-gray-300 px-4 py-2 text-center">
+                  <td className="border border-border px-4 py-2 text-center">
                     {entry.comments && entry.comments.length > 0 ? (
-                      <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                      <span className="inline-block bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs px-2 py-1 rounded">
                         {entry.comments.length}
                       </span>
                     ) : (
-                      <span className="text-gray-400">0</span>
+                      <span className="text-muted-foreground">0</span>
                     )}
                   </td>
                 </tr>
@@ -125,7 +125,7 @@ export default function LedgerView({ entries, onEntryClick }: LedgerViewProps) {
         </div>
 
         {entries.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-12 text-muted-foreground">
             <p>No entries in this collection</p>
           </div>
         )}
