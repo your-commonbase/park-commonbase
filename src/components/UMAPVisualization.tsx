@@ -23,6 +23,7 @@ interface UMAPVisualizationProps {
   onCollectionChange: (collection: string) => void
   collections: string[]
   newlyAddedEntryId?: string
+  onGraphClick?: () => void
 }
 
 function UMAPVisualization({
@@ -32,13 +33,31 @@ function UMAPVisualization({
   onCollectionChange,
   collections,
   newlyAddedEntryId,
+  onGraphClick,
 }: UMAPVisualizationProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Check display mode from environment variable
-  const displayMode = process.env.NEXT_PUBLIC_GRAPH_DISPLAY_MODE || 'tooltip'
+  // Check display mode from localStorage, window object, or environment variable
+  const getDisplayMode = () => {
+    if (typeof window !== 'undefined') {
+      // Check runtime setting first
+      const runtimeMode = (window as typeof window & { NEXT_PUBLIC_GRAPH_DISPLAY_MODE?: string }).NEXT_PUBLIC_GRAPH_DISPLAY_MODE
+      if (runtimeMode) return runtimeMode
+
+      // Check localStorage
+      const savedMode = localStorage.getItem('graphDisplayMode')
+      if (savedMode) return savedMode
+
+      // Default based on device
+      const isMobile = window.innerWidth <= 768
+      return isMobile ? 'tooltip' : 'text'
+    }
+    return process.env.NEXT_PUBLIC_GRAPH_DISPLAY_MODE || 'tooltip'
+  }
+
+  const [displayMode, setDisplayMode] = useState(getDisplayMode())
 
   // Helper function to truncate text
   const truncateText = (text: string, maxLength: number = 100) => {
@@ -118,14 +137,27 @@ function UMAPVisualization({
 
     updateDimensions()
     window.addEventListener('resize', updateDimensions)
+
+    // Listen for display mode changes
+    const checkDisplayModeChanges = () => {
+      const newMode = getDisplayMode()
+      if (newMode !== displayMode) {
+        setDisplayMode(newMode)
+      }
+    }
+
+    // Check periodically for changes
+    const intervalId = setInterval(checkDisplayModeChanges, 100)
+
     return () => {
       window.removeEventListener('resize', updateDimensions)
+      clearInterval(intervalId)
       // Cleanup zoom timeout
       if (zoomTimeoutRef.current) {
         clearTimeout(zoomTimeoutRef.current)
       }
     }
-  }, [])
+  }, [displayMode])
 
   // Apply UMAP positioning similar to your working project (moved outside useEffect for memoization)
   const applyUMAPPositioning = useCallback((entries: Entry[]) => {
@@ -701,6 +733,12 @@ function UMAPVisualization({
         style={{
           willChange: 'transform',
           transform: 'translateZ(0)', // Force GPU acceleration
+        }}
+        onClick={(event) => {
+          // Only trigger onGraphClick if clicking on the SVG itself (empty space)
+          if (event.target === event.currentTarget && onGraphClick) {
+            onGraphClick()
+          }
         }}
       />
     </div>

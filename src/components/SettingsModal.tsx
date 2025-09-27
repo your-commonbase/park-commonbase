@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { X, Settings, Upload, Home } from 'lucide-react'
 import AudioRecorder from '@/components/AudioRecorder'
 import { useUploadThing } from '@/lib/uploadthing-client'
@@ -34,7 +34,7 @@ export default function SettingsModal({
   onAddEntry,
   isAddingEntry,
 }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<'admin' | 'collections' | 'upload'>('collections')
+  const [activeTab, setActiveTab] = useState<'admin' | 'collections' | 'upload' | 'display'>('collections')
   const [showAdminLogin, setShowAdminLogin] = useState(false)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -52,6 +52,26 @@ export default function SettingsModal({
   const [uploadedAudioUrl, setUploadedAudioUrl] = useState<string>('')
   const [isUploading, setIsUploading] = useState(false)
   const [isRecordingUpload, setIsRecordingUpload] = useState(false)
+  const [graphDisplayMode, setGraphDisplayMode] = useState<'text' | 'tooltip'>(() => {
+    // Check if we're on mobile/tablet for default
+    if (typeof window !== 'undefined') {
+      // First check localStorage for saved preference
+      const saved = localStorage.getItem('graphDisplayMode')
+      if (saved && (saved === 'text' || saved === 'tooltip')) {
+        // Set environment variable for immediate effect
+        (window as typeof window & { NEXT_PUBLIC_GRAPH_DISPLAY_MODE?: string }).NEXT_PUBLIC_GRAPH_DISPLAY_MODE = saved
+        return saved as 'text' | 'tooltip'
+      }
+
+      // Otherwise default based on device
+      const isMobile = window.innerWidth <= 768
+      const mode: 'text' | 'tooltip' = isMobile ? 'tooltip' : 'text'
+      // Set environment variable for immediate effect
+      (window as typeof window & { NEXT_PUBLIC_GRAPH_DISPLAY_MODE?: string }).NEXT_PUBLIC_GRAPH_DISPLAY_MODE = mode
+      return mode
+    }
+    return 'tooltip'
+  })
 
   const { startUpload: startImageUpload } = useUploadThing('imageUploader', {
     onClientUploadComplete: (res) => {
@@ -348,6 +368,7 @@ export default function SettingsModal({
     reader.readAsText(file)
   }
 
+
   if (!isOpen) return null
 
   return (
@@ -387,6 +408,16 @@ export default function SettingsModal({
             }`}
           >
             Collections
+          </button>
+          <button
+            onClick={() => setActiveTab('display')}
+            className={`px-4 py-2 font-medium ${
+              activeTab === 'display'
+                ? 'border-b-2 border-blue-600 text-blue-600'
+                : 'text-muted-foreground hover:text-card-foreground'
+            }`}
+          >
+            Display
           </button>
           <button
             onClick={() => setActiveTab('admin')}
@@ -481,6 +512,86 @@ export default function SettingsModal({
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Display Tab */}
+          {activeTab === 'display' && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-medium text-card-foreground mb-4">Graph Display Options</h3>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-card-foreground mb-2">
+                      Node Display Mode
+                    </label>
+                    <div className="space-y-2">
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          name="displayMode"
+                          value="text"
+                          checked={graphDisplayMode === 'text'}
+                          onChange={(e) => {
+                            const newMode = e.target.value as 'text' | 'tooltip'
+                            setGraphDisplayMode(newMode)
+                            // Store in localStorage for persistence
+                            localStorage.setItem('graphDisplayMode', e.target.value)
+                            // Set environment variable for immediate effect
+                            if (typeof window !== 'undefined') {
+                              (window as typeof window & { NEXT_PUBLIC_GRAPH_DISPLAY_MODE?: string }).NEXT_PUBLIC_GRAPH_DISPLAY_MODE = e.target.value
+                            }
+                            // Force page refresh for immediate effect
+                            setTimeout(() => window.location.reload(), 100)
+                          }}
+                          className="form-radio text-blue-600"
+                        />
+                        <span className="text-sm text-card-foreground">
+                          <strong>Text Mode:</strong> Show text labels next to nodes (recommended for desktop)
+                        </span>
+                      </label>
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          name="displayMode"
+                          value="tooltip"
+                          checked={graphDisplayMode === 'tooltip'}
+                          onChange={(e) => {
+                            const newMode = e.target.value as 'text' | 'tooltip'
+                            setGraphDisplayMode(newMode)
+                            // Store in localStorage for persistence
+                            localStorage.setItem('graphDisplayMode', e.target.value)
+                            // Set environment variable for immediate effect
+                            if (typeof window !== 'undefined') {
+                              (window as typeof window & { NEXT_PUBLIC_GRAPH_DISPLAY_MODE?: string }).NEXT_PUBLIC_GRAPH_DISPLAY_MODE = e.target.value
+                            }
+                            // Force page refresh for immediate effect
+                            setTimeout(() => window.location.reload(), 100)
+                          }}
+                          className="form-radio text-blue-600"
+                        />
+                        <span className="text-sm text-card-foreground">
+                          <strong>Hover Mode:</strong> Show text on hover/tap (recommended for mobile)
+                        </span>
+                      </label>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Changes take effect immediately after a brief page refresh.
+                    </p>
+                  </div>
+
+                  <div className="border-t border-border pt-4">
+                    <h4 className="text-sm font-medium text-card-foreground mb-2">Current Device</h4>
+                    <p className="text-xs text-muted-foreground">
+                      {typeof window !== 'undefined' && window.innerWidth <= 768 ?
+                        'Mobile/Tablet - Hover mode recommended' :
+                        'Desktop - Text mode recommended'
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

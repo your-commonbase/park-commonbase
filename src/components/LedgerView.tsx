@@ -15,9 +15,10 @@ interface Entry {
 interface LedgerViewProps {
   entries: Entry[]
   onEntryClick: (entry: Entry) => void
+  onShowInGraph?: (entry: Entry) => void
 }
 
-export default function LedgerView({ entries, onEntryClick }: LedgerViewProps) {
+export default function LedgerView({ entries, onEntryClick, onShowInGraph }: LedgerViewProps) {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString()
   }
@@ -80,6 +81,9 @@ export default function LedgerView({ entries, onEntryClick }: LedgerViewProps) {
                 <th className="border border-border px-4 py-2 text-left font-medium text-muted-foreground">
                   Comments
                 </th>
+                <th className="border border-border px-4 py-2 text-center font-medium text-muted-foreground">
+                  Show in Graph
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -116,6 +120,20 @@ export default function LedgerView({ entries, onEntryClick }: LedgerViewProps) {
                       </span>
                     ) : (
                       <span className="text-muted-foreground">0</span>
+                    )}
+                  </td>
+                  <td className="border border-border px-4 py-2 text-center">
+                    {onShowInGraph && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation() // Prevent row click
+                          onShowInGraph(entry)
+                        }}
+                        className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                        title={`Show ${entry.data.substring(0, 50)}... in graph view`}
+                      >
+                        Show in Graph
+                      </button>
                     )}
                   </td>
                 </tr>

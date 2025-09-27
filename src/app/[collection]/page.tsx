@@ -24,6 +24,7 @@ export default function CollectionPage() {
   const [newlyAddedEntryId, setNewlyAddedEntryId] = useState<string | undefined>(undefined)
   const [viewMode, setViewMode] = useState<'graph' | 'ledger'>('graph')
   const [isLoadingEntries, setIsLoadingEntries] = useState(false)
+  const [highlightedEntryId, setHighlightedEntryId] = useState<string | undefined>(undefined)
 
   // Check for admin status on page load
   useEffect(() => {
@@ -331,6 +332,17 @@ export default function CollectionPage() {
     }
   }
 
+  const handleShowInGraph = (entry: Entry) => {
+    // Switch to graph view
+    setViewMode('graph')
+    // Highlight the selected entry
+    setHighlightedEntryId(entry.id)
+    // Clear highlight after 3 seconds
+    setTimeout(() => setHighlightedEntryId(undefined), 3000)
+    // Close any open sidebar
+    setSelectedEntry(null)
+  }
+
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
@@ -392,7 +404,8 @@ export default function CollectionPage() {
               onNodeClick={handleNodeClick}
               onCollectionChange={handleCollectionChange}
               collections={collections}
-              newlyAddedEntryId={newlyAddedEntryId}
+              newlyAddedEntryId={newlyAddedEntryId || highlightedEntryId}
+              onGraphClick={() => setSelectedEntry(null)}
             />
             {/* QR Code - Bottom Right Corner */}
             <div className="fixed bottom-4 right-4 z-40 sm:absolute sm:bottom-4 sm:right-4 safe-area-inset-bottom safe-area-inset-right">
@@ -407,6 +420,7 @@ export default function CollectionPage() {
           <LedgerView
             entries={entries}
             onEntryClick={handleNodeClick}
+            onShowInGraph={handleShowInGraph}
           />
         )}
       </div>
