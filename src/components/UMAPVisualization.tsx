@@ -66,8 +66,11 @@ function UMAPVisualization({
 
   // Helper function to add hover effects based on display mode
   const addHoverEffects = (nodes: d3.Selection<SVGGElement, any, SVGGElement, unknown>) => {
-    if (displayMode === 'tooltip') {
-      // Tooltip mode - show on hover
+    // Check if we're on mobile to disable tooltips
+    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
+
+    if (displayMode === 'tooltip' && !isMobile) {
+      // Tooltip mode - show on hover (disabled on mobile)
       nodes.on('mouseenter', function(event, d) {
         requestAnimationFrame(() => {
           d3.select(this).select('circle, rect').attr('stroke-width', 4)
@@ -97,7 +100,7 @@ function UMAPVisualization({
         })
       })
     } else {
-      // Text mode - just highlight on hover, text is already visible
+      // Text mode OR mobile - just highlight on hover, no tooltips
       nodes.on('mouseenter', function(event, d) {
         d3.select(this).select('circle, rect').attr('stroke-width', 4)
       })
@@ -107,8 +110,6 @@ function UMAPVisualization({
     }
   }
 
-  // Memoize entry IDs to prevent unnecessary re-renders
-  const entryIds = useMemo(() => entries.map(e => e.id).join(','), [entries])
   const entryCount = entries.length
 
   // Throttled zoom handler for better performance
@@ -300,6 +301,10 @@ function UMAPVisualization({
       return positionedEntries
     }, []) // No dependencies since this is a pure function
 
+  // Extract dependencies for memoization
+  const entryIds = useMemo(() => entries.map(e => e.id).join(','), [entries])
+  const commentCounts = useMemo(() => entries.map(e => e.comments?.length || 0).join(','), [entries])
+
   // Memoize UMAP positioning to avoid recalculation on every render
   const positionedEntries = useMemo(() => {
     if (!entries.length) return []
@@ -320,9 +325,10 @@ function UMAPVisualization({
 
     if (process.env.NODE_ENV === 'development') {
       console.log('UMAP positioning memoized calculation with', entries.length, 'entries, flattened to', allEntries.length)
+      console.log('Entry IDs:', allEntries.map(e => e.id).slice(0, 5)) // Log first 5 IDs for debugging
     }
     return applyUMAPPositioning(allEntries)
-  }, [entries, applyUMAPPositioning]) // Only recalculate when entries change
+  }, [entries.length, entryIds, commentCounts, applyUMAPPositioning]) // Recalculate when entries, IDs, or comments change
 
   useEffect(() => {
     if (!svgRef.current || !positionedEntries.length || !dimensions.width) return
@@ -426,7 +432,8 @@ function UMAPVisualization({
       }
 
       // Add hover effects based on display mode
-      if (displayMode === 'tooltip') {
+      const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
+      if (displayMode === 'tooltip' && !isMobile) {
         node.on('mouseenter', function(event) {
           d3.select(this).select('circle, rect').attr('stroke-width', 4)
 
@@ -657,8 +664,9 @@ function UMAPVisualization({
       .attr('opacity', d => d.entry.parentId ? 0.8 : 1)
 
     // Add interaction effects based on display mode
-    if (displayMode === 'tooltip') {
-      // Add hover effects with performance optimization for tooltip mode
+    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
+    if (displayMode === 'tooltip' && !isMobile) {
+      // Add hover effects with performance optimization for tooltip mode (disabled on mobile)
       nodes.on('mouseenter', function(event, d) {
         // Use requestAnimationFrame for hover effects
         requestAnimationFrame(() => {
@@ -690,7 +698,7 @@ function UMAPVisualization({
         })
       })
     } else {
-      // Add simple hover effects for text mode (no tooltip)
+      // Add simple hover effects for text mode OR mobile (no tooltip)
       nodes.on('mouseenter', function() {
         d3.select(this).select('circle, rect').attr('stroke-width', 4)
       })

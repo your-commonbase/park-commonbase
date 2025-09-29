@@ -65,10 +65,13 @@ export default function SettingsModal({
 
       // Otherwise default based on device
       const isMobile = window.innerWidth <= 768
-      const mode: 'text' | 'tooltip' = isMobile ? 'tooltip' : 'text'
-      // Set environment variable for immediate effect
-      (window as typeof window & { NEXT_PUBLIC_GRAPH_DISPLAY_MODE?: string }).NEXT_PUBLIC_GRAPH_DISPLAY_MODE = mode
-      return mode
+      if (isMobile) {
+        (window as typeof window & { NEXT_PUBLIC_GRAPH_DISPLAY_MODE?: string }).NEXT_PUBLIC_GRAPH_DISPLAY_MODE = 'tooltip'
+        return 'tooltip'
+      } else {
+        (window as typeof window & { NEXT_PUBLIC_GRAPH_DISPLAY_MODE?: string }).NEXT_PUBLIC_GRAPH_DISPLAY_MODE = 'text'
+        return 'text'
+      }
     }
     return 'tooltip'
   })
