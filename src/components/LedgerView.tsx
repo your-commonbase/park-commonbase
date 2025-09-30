@@ -102,7 +102,16 @@ export default function LedgerView({ entries, onEntryClick, onShowInGraph }: Led
                     {getEntryType(entry.metadata)}
                   </td>
                   <td className="border border-border px-4 py-2 max-w-md">
-                    {truncateText(entry.data)}
+                    {getEntryType(entry.metadata) === 'image' && (entry.metadata.imageUrl || entry.metadata.imageFile) ? (
+                      <img
+                        src={entry.metadata.imageUrl || `/images/${entry.metadata.imageFile}`}
+                        alt={entry.data}
+                        className="w-16 h-12 object-cover rounded border"
+                        loading="lazy"
+                      />
+                    ) : (
+                      truncateText(entry.data)
+                    )}
                   </td>
                   <td className="border border-border px-4 py-2">
                     {getAuthor(entry.metadata)}
