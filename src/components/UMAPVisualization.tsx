@@ -789,19 +789,19 @@ function UMAPVisualization({
       {/* Fullscreen Image Modal */}
       {fullscreenImage && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 p-4"
           onClick={() => setFullscreenImage(null)}
         >
-          <div className="relative max-w-[90vw] max-h-[90vh]">
+          <div className="relative w-full h-full flex items-center justify-center">
             <img
               src={fullscreenImage.url}
               alt={fullscreenImage.alt}
-              className="w-full h-full object-contain"
+              className="max-w-full max-h-full object-contain"
               onClick={(e) => e.stopPropagation()} // Prevent closing when clicking on image
             />
             <button
               onClick={() => setFullscreenImage(null)}
-              className="absolute top-4 right-4 text-white bg-black bg-opacity-50 hover:bg-opacity-75 rounded-full p-2 transition-opacity"
+              className="absolute top-4 right-4 text-white bg-black bg-opacity-50 hover:bg-opacity-75 rounded-full p-2 transition-opacity z-10"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
