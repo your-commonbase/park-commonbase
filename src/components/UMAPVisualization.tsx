@@ -38,6 +38,21 @@ function UMAPVisualization({
   const svgRef = useRef<SVGSVGElement>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [fullscreenImage, setFullscreenImage] = useState<{ url: string; alt: string } | null>(null)
+
+  // Handle escape key for closing modal
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && fullscreenImage) {
+        setFullscreenImage(null)
+      }
+    }
+
+    if (fullscreenImage) {
+      document.addEventListener('keydown', handleKeyDown)
+      return () => document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [fullscreenImage])
 
   // Check display mode from localStorage, window object, or environment variable
   const getDisplayMode = () => {
@@ -380,25 +395,30 @@ function UMAPVisualization({
 
       // Draw based on entry type
       if (entry.metadata.type === 'image') {
-        node.append('rect')
-          .attr('x', -12)
-          .attr('y', -12)
-          .attr('width', 24)
-          .attr('height', 24)
+        node.append('circle')
+          .attr('r', 12)
           .attr('fill', '#f59e0b')
           .attr('stroke', '#fff')
           .attr('stroke-width', 2)
-          .attr('rx', 4)
 
-        if (entry.metadata.imageFile || entry.metadata.imageUrl) {
-          node.append('image')
-            .attr('x', -10)
-            .attr('y', -10)
-            .attr('width', 20)
-            .attr('height', 20)
-            .attr('href', entry.metadata.imageUrl || `/images/${entry.metadata.imageFile}`)
-            .attr('clip-path', 'inset(0% round 2px)')
-        }
+        // Add image icon
+        node.append('rect')
+          .attr('x', -6)
+          .attr('y', -6)
+          .attr('width', 12)
+          .attr('height', 12)
+          .attr('fill', '#fff')
+          .attr('rx', 2)
+
+        node.append('circle')
+          .attr('cx', -2)
+          .attr('cy', -2)
+          .attr('r', 2)
+          .attr('fill', '#f59e0b')
+
+        node.append('polygon')
+          .attr('points', '-6,2 -2,-2 2,2 6,6 -6,6')
+          .attr('fill', '#f59e0b')
       } else if (entry.metadata.type === 'audio') {
         node.append('circle')
           .attr('r', 12)
@@ -575,7 +595,16 @@ function UMAPVisualization({
         return `translate(${xScale(d.position[0])}, ${yScale(d.position[1])})`
       })
       .style('cursor', 'pointer')
-      .on('click', (event, d) => onNodeClick(d.entry))
+      .on('click', (event, d) => {
+        if (d.entry.metadata.type === 'image') {
+          // Open fullscreen image modal for image entries
+          const imageUrl = d.entry.metadata.imageUrl || `/images/${d.entry.metadata.imageFile}`
+          setFullscreenImage({ url: imageUrl, alt: d.entry.data })
+        } else {
+          // Regular node click behavior for non-image entries
+          onNodeClick(d.entry)
+        }
+      })
 
     // Draw circles for text entries (including text comments)
     nodes.filter(d => !d.entry.metadata.type || d.entry.metadata.type === 'text')
@@ -586,28 +615,35 @@ function UMAPVisualization({
       .attr('stroke', d => d.entry.id === newlyAddedEntryId ? '#ff6b35' : '#fff')
       .attr('stroke-width', (d: any) => d.entry.id === newlyAddedEntryId ? 4 : 2)
 
-    // Draw rectangles with thumbnails for image entries
+    // Draw orange circles for image entries
     const imageNodes = nodes.filter(d => d.entry.metadata.type === 'image')
 
-    imageNodes.append('rect')
-      .attr('x', d => d.entry.parentId ? -10 : -12) // Smaller for comments
-      .attr('y', d => d.entry.parentId ? -10 : -12)
-      .attr('width', d => d.entry.parentId ? 20 : 24)
-      .attr('height', d => d.entry.parentId ? 20 : 24)
-      .attr('fill', d => colorScale('image') as string)
+    imageNodes.append('circle')
+      .attr('r', d => d.entry.parentId ? 10 : 12) // Smaller for comments
+      .attr('fill', '#f59e0b') // Orange color
       .attr('fill-opacity', d => d.entry.parentId ? 0.7 : 1) // More transparent for comments
       .attr('stroke', d => d.entry.id === newlyAddedEntryId ? '#ff6b35' : '#fff')
       .attr('stroke-width', (d: any) => d.entry.id === newlyAddedEntryId ? 4 : 2)
-      .attr('rx', 4)
 
-    imageNodes.append('image')
-      .attr('x', d => d.entry.parentId ? -8 : -10)
-      .attr('y', d => d.entry.parentId ? -8 : -10)
-      .attr('width', d => d.entry.parentId ? 16 : 20)
-      .attr('height', d => d.entry.parentId ? 16 : 20)
-      .attr('href', d => d.entry.metadata.imageUrl || `/images/${d.entry.metadata.imageFile}`)
-      .attr('clip-path', 'inset(0% round 2px)')
-      .attr('opacity', d => d.entry.parentId ? 0.7 : 1) // More transparent for comments
+    // Add simple image icon (rectangle with smaller rectangle inside)
+    imageNodes.append('rect')
+      .attr('x', d => d.entry.parentId ? -4 : -5)
+      .attr('y', d => d.entry.parentId ? -4 : -5)
+      .attr('width', d => d.entry.parentId ? 8 : 10)
+      .attr('height', d => d.entry.parentId ? 6 : 8)
+      .attr('fill', 'none')
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 1.5)
+      .attr('rx', 1)
+      .attr('opacity', d => d.entry.parentId ? 0.8 : 1)
+
+    // Add a small circle in top-right corner to represent image
+    imageNodes.append('circle')
+      .attr('cx', d => d.entry.parentId ? 1 : 2)
+      .attr('cy', d => d.entry.parentId ? -2 : -2)
+      .attr('r', d => d.entry.parentId ? 1 : 1.5)
+      .attr('fill', '#fff')
+      .attr('opacity', d => d.entry.parentId ? 0.8 : 1)
 
     // Draw circles with play icon for audio entries
     const audioNodes = nodes.filter(d => d.entry.metadata.type === 'audio')
@@ -749,6 +785,31 @@ function UMAPVisualization({
           }
         }}
       />
+
+      {/* Fullscreen Image Modal */}
+      {fullscreenImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90"
+          onClick={() => setFullscreenImage(null)}
+        >
+          <div className="relative max-w-[90vw] max-h-[90vh]">
+            <img
+              src={fullscreenImage.url}
+              alt={fullscreenImage.alt}
+              className="w-full h-full object-contain"
+              onClick={(e) => e.stopPropagation()} // Prevent closing when clicking on image
+            />
+            <button
+              onClick={() => setFullscreenImage(null)}
+              className="absolute top-4 right-4 text-white bg-black bg-opacity-50 hover:bg-opacity-75 rounded-full p-2 transition-opacity"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

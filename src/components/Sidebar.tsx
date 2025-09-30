@@ -191,17 +191,18 @@ export default function Sidebar({
             </div>
           )}
 
-          {/* Entry Text */}
-          <div className="mb-6">
-            <h3 className="font-medium mb-2">
-              {entry.metadata.type === 'audio' ? 'Transcription:' :
-               entry.metadata.type === 'image' ? 'Caption:' :
-               entry.metadata.type === 'youtube' ? 'Video Title:' :
-               entry.metadata.type === 'spotify' ? 'Track/Playlist:' :
-               'Content:'}
-            </h3>
-            <p className="text-foreground whitespace-pre-wrap">{entry.data}</p>
-          </div>
+          {/* Entry Text - Hide for image entries */}
+          {entry.metadata.type !== 'image' && (
+            <div className="mb-6">
+              <h3 className="font-medium mb-2">
+                {entry.metadata.type === 'audio' ? 'Transcription:' :
+                 entry.metadata.type === 'youtube' ? 'Video Title:' :
+                 entry.metadata.type === 'spotify' ? 'Track/Playlist:' :
+                 'Content:'}
+              </h3>
+              <p className="text-foreground whitespace-pre-wrap">{entry.data}</p>
+            </div>
+          )}
 
           {/* Metadata */}
           {entry.metadata.author && (
