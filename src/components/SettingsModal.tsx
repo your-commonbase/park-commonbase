@@ -19,6 +19,7 @@ interface SettingsModalProps {
   onCreateCollection: (name: string) => Promise<void>
   onAddEntry: (data: FormData | Record<string, unknown>, type: 'text' | 'image' | 'audio' | 'csv') => Promise<void>
   isAddingEntry: boolean
+  entries?: any[]
 }
 
 export default function SettingsModal({
@@ -33,8 +34,9 @@ export default function SettingsModal({
   onCreateCollection,
   onAddEntry,
   isAddingEntry,
+  entries = [],
 }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<'admin' | 'collections' | 'upload' | 'display'>('collections')
+  const [activeTab, setActiveTab] = useState<'admin' | 'collections' | 'upload' | 'display' | 'export'>('collections')
   const [showAdminLogin, setShowAdminLogin] = useState(false)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -52,6 +54,7 @@ export default function SettingsModal({
   const [uploadedAudioUrl, setUploadedAudioUrl] = useState<string>('')
   const [isUploading, setIsUploading] = useState(false)
   const [isRecordingUpload, setIsRecordingUpload] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
   const [graphDisplayMode, setGraphDisplayMode] = useState<'text' | 'tooltip'>(() => {
     // Check if we're on mobile/tablet for default
     if (typeof window !== 'undefined') {
@@ -371,6 +374,607 @@ export default function SettingsModal({
     reader.readAsText(file)
   }
 
+  const handleExportHTML = async () => {
+    if (!entries.length) {
+      alert('No entries to export')
+      return
+    }
+
+    setIsExporting(true)
+
+    try {
+      // Get the current UMAP positions from the actual visualization
+      let positionedEntries: any[] = []
+
+      try {
+        // Try to get positions from the current page's UMAP visualization
+        if (typeof window !== 'undefined' && (window as any).getCurrentUMAPPositions) {
+          positionedEntries = (window as any).getCurrentUMAPPositions()
+          console.log('Successfully captured', positionedEntries.length, 'live UMAP positions')
+        }
+      } catch (error) {
+        console.log('Could not get live UMAP positions, using fallback')
+      }
+
+      // Only use fallback if we couldn't get live positions
+      if (!positionedEntries || positionedEntries.length === 0) {
+        console.log('Using fallback positioning since live positions not available')
+        // Flatten entries to include comments as separate nodes
+        const allEntries: any[] = []
+        entries.forEach(entry => {
+          allEntries.push(entry)
+          if (entry.comments && entry.comments.length > 0) {
+            entry.comments.forEach((comment: any) => {
+              allEntries.push(comment)
+            })
+          }
+        })
+
+        // Use simple circular layout as fallback
+        positionedEntries = allEntries.map((entry, index) => {
+          if (allEntries.length === 1) {
+            return { entry, position: [0, 0] as [number, number] }
+          } else if (allEntries.length === 2) {
+            return { entry, position: index === 0 ? [-1, 0] : [1, 0] as [number, number] }
+          } else {
+            const angle = (index / allEntries.length) * 2 * Math.PI
+            const radius = 2
+            return {
+              entry,
+              position: [Math.cos(angle) * radius, Math.sin(angle) * radius] as [number, number]
+            }
+          }
+        })
+      } else {
+        console.log('Using live UMAP positions for export')
+      }
+
+      // Generate QR code for source URL
+      const sourceUrl = window.location.origin + window.location.pathname
+      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(sourceUrl)}`
+
+      // Create a self-contained HTML file with embedded styles and scripts
+      const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${collection} - Exported Visualization</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/umap-js@1.5.3/lib/umap-js.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #ffffff;
+            color: #111827;
+            overflow: hidden;
+        }
+
+        .main-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .graph-container {
+            flex: 1;
+            position: relative;
+        }
+
+        .sidebar {
+            width: 400px;
+            background: #f9fafb;
+            border-left: 1px solid #e5e7eb;
+            display: flex;
+            flex-direction: column;
+            max-height: 100vh;
+            overflow: hidden;
+        }
+
+        .tab-container {
+            display: flex;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px 16px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #6b7280;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            color: #2563eb;
+            border-bottom-color: #2563eb;
+        }
+
+        .tab-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .ledger-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .ledger-table th,
+        .ledger-table td {
+            padding: 8px;
+            border: 1px solid #e5e7eb;
+            text-align: left;
+        }
+
+        .ledger-table th {
+            background: #f3f4f6;
+            font-weight: 600;
+        }
+
+        .ledger-table tr:hover {
+            background: #f9fafb;
+        }
+
+        .entry-details {
+            padding: 16px;
+        }
+
+        .entry-details h3 {
+            margin-bottom: 8px;
+            color: #111827;
+        }
+
+        .entry-details p {
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+
+        .entry-type-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .type-text { background: #dbeafe; color: #1e40af; }
+        .type-audio { background: #dcfce7; color: #166534; }
+        .type-image { background: #fef3c7; color: #92400e; }
+
+        .qr-code {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            max-width: 200px;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .collection-title {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #111827;
+            z-index: 10;
+        }
+
+        .zoom-hint {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: #6b7280;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="graph-container">
+            <div class="collection-title">${collection}</div>
+            <svg id="visualization" style="width: 100%; height: 100%;"></svg>
+            <div class="zoom-hint">Drag to pan • Scroll to zoom</div>
+        </div>
+
+        <div class="sidebar">
+            <div class="tab-container">
+                <button class="tab active" onclick="showTab('ledger')">Ledger</button>
+                <button class="tab" onclick="showTab('entry')">Entry Details</button>
+            </div>
+
+            <div id="ledger-tab" class="tab-content">
+                <h3 style="margin-bottom: 16px; color: #111827;">Collection Ledger</h3>
+                <p style="margin-bottom: 16px; color: #6b7280; font-size: 14px;">${entries.length} entries total</p>
+                <div style="overflow-x: auto;">
+                    <table class="ledger-table">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Description</th>
+                                <th>Author</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${entries.map(entry => `
+                                <tr onclick="selectEntry('${entry.id}')">
+                                    <td>
+                                        <span class="entry-type-badge type-${entry.metadata?.type || 'text'}">
+                                            ${entry.metadata?.type || 'text'}
+                                        </span>
+                                    </td>
+                                    <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        ${entry.data.substring(0, 100)}${entry.data.length > 100 ? '...' : ''}
+                                    </td>
+                                    <td>${entry.metadata?.author?.name || 'Anonymous'}</td>
+                                    <td style="font-size: 10px;">${new Date(entry.createdAt).toLocaleDateString()}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="entry-tab" class="tab-content" style="display: none;">
+                <div id="entry-details">
+                    <p style="color: #6b7280;">Select an entry from the graph or ledger to view details</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="qr-code">
+        <img src="${qrCodeUrl}" alt="QR Code to source" style="display: block;" />
+        <p style="font-size: 10px; text-align: center; margin-top: 4px; color: #6b7280;">Source</p>
+    </div>
+
+    <script>
+        // Entry data
+        const entries = ${JSON.stringify(entries)};
+        const positionedEntries = ${JSON.stringify(positionedEntries)};
+        let selectedEntryId = null;
+
+        // Tab switching
+        function showTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelector('button[onclick="showTab(\\''+tabName+'\\')"]').classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => content.style.display = 'none');
+            document.getElementById(tabName + '-tab').style.display = 'block';
+        }
+
+        function selectEntry(entryId) {
+            selectedEntryId = entryId;
+            const entry = entries.find(e => e.id === entryId);
+            if (!entry) return;
+
+            // Update entry details
+            const detailsContainer = document.getElementById('entry-details');
+            const entryType = entry.metadata?.type || 'text';
+
+            let content = '';
+
+            // Handle different entry types with proper rendering
+            if (entryType === 'image' && (entry.metadata?.imageUrl || entry.metadata?.imageFile)) {
+                const imageUrl = entry.metadata.imageUrl || ('/images/' + entry.metadata.imageFile);
+                content = '<div style="margin-bottom: 12px;"><img src="' + imageUrl + '" alt="Image" style="max-width: 100%; height: auto; border-radius: 4px; border: 1px solid #e5e7eb; cursor: pointer;" onclick="window.open(\\'' + imageUrl + '\\', \\'_blank\\')"></div><p style="font-style: italic; color: #6b7280;">' + entry.data.replace(/'/g, "\\'") + '</p>';
+            } else if (entryType === 'youtube' && entry.metadata?.url) {
+                content = '<div style="margin-bottom: 12px;"><a href="' + entry.metadata.url + '" target="_blank" style="color: #2563eb; text-decoration: underline;">🎥 Watch on YouTube</a></div><p>' + entry.data.replace(/'/g, "\\'") + '</p>';
+            } else if (entryType === 'spotify' && entry.metadata?.url) {
+                content = '<div style="margin-bottom: 12px;"><a href="' + entry.metadata.url + '" target="_blank" style="color: #1ed760; text-decoration: underline;">🎵 Listen on Spotify</a></div><p>' + entry.data.replace(/'/g, "\\'") + '</p>';
+            } else if (entryType === 'audio' && entry.metadata?.audioUrl) {
+                content = '<div style="margin-bottom: 12px;"><audio controls style="width: 100%;"><source src="' + entry.metadata.audioUrl + '" type="audio/mpeg"><source src="' + entry.metadata.audioUrl + '" type="audio/wav">Your browser does not support the audio element.</audio></div><p style="font-style: italic; color: #6b7280;">Transcription: ' + entry.data.replace(/'/g, "\\'") + '</p>';
+            } else {
+                content = '<p>' + entry.data.replace(/'/g, "\\'") + '</p>';
+            }
+
+            let innerHTML = '<div><span class="entry-type-badge type-' + entryType + '">' + entryType + '</span></div>';
+            innerHTML += '<h3 style="margin: 12px 0;">Content</h3>';
+            innerHTML += content;
+            innerHTML += '<h3 style="margin: 12px 0 4px 0;">Author</h3>';
+            innerHTML += '<p>' + (entry.metadata?.author?.name || 'Anonymous') + '</p>';
+            innerHTML += '<h3 style="margin: 12px 0 4px 0;">Created</h3>';
+            innerHTML += '<p>' + new Date(entry.createdAt).toLocaleString() + '</p>';
+
+            if (entry.comments && entry.comments.length > 0) {
+                innerHTML += '<h3 style="margin: 12px 0 4px 0;">Comments (' + entry.comments.length + ')</h3>';
+                entry.comments.forEach(comment => {
+                    innerHTML += '<div style="margin: 8px 0; padding: 8px; background: #f3f4f6; border-radius: 4px;">';
+                    innerHTML += '<p style="margin: 0;">' + comment.data.replace(/'/g, "\\'") + '</p>';
+                    innerHTML += '<p style="margin: 4px 0 0 0; font-size: 10px; color: #6b7280;">' + new Date(comment.createdAt).toLocaleString() + '</p>';
+                    innerHTML += '</div>';
+                });
+            }
+
+            detailsContainer.innerHTML = innerHTML;
+
+            // Switch to entry details tab
+            showTab('entry');
+
+            // Highlight node in graph
+            highlightNode(entryId);
+        }
+
+        function highlightNode(entryId) {
+            // Remove previous highlights
+            d3.selectAll('.node circle, .node rect').attr('stroke-width', 2).attr('stroke', '#fff');
+
+            // Highlight selected node
+            d3.selectAll('.node').each(function(d) {
+                if (d && d.entry && d.entry.id === entryId) {
+                    d3.select(this).select('circle, rect').attr('stroke-width', 4).attr('stroke', '#ff6b35');
+                }
+            });
+        }
+
+        // Visualization with pre-calculated positions (snapshot)
+        function createVisualization() {
+            const svg = d3.select('#visualization');
+            const width = window.innerWidth * 0.6; // Approximate width
+            const height = window.innerHeight;
+
+            console.log('Creating visualization with', positionedEntries.length, 'positioned entries');
+
+            svg.selectAll('*').remove();
+
+            if (positionedEntries.length === 0) {
+                console.log('No positioned entries, showing empty message');
+                svg.append('text')
+                    .attr('x', width / 2)
+                    .attr('y', height / 2)
+                    .attr('text-anchor', 'middle')
+                    .attr('fill', 'gray')
+                    .attr('font-size', '18px')
+                    .text('No entries found');
+                return;
+            }
+
+            // Use the pre-calculated positioned entries (no UMAP calculation needed)
+            const flattenedEntries = positionedEntries.map(pe => pe.entry);
+            const positions = positionedEntries.map(pe => pe.position);
+
+            console.log('Flattened entries:', flattenedEntries.length);
+            console.log('Positions:', positions.slice(0, 3)); // Log first 3 positions for debug
+
+            // Add arrowhead marker definition
+            svg.append('defs')
+                .append('marker')
+                .attr('id', 'arrowhead')
+                .attr('viewBox', '-5 -5 10 10')
+                .attr('refX', 5)
+                .attr('refY', 0)
+                .attr('markerWidth', 6)
+                .attr('markerHeight', 6)
+                .attr('orient', 'auto')
+                .append('path')
+                .attr('d', 'M 0,0 L -5,-3 L -5,3 z')
+                .attr('fill', '#94a3b8');
+
+            // Handle single entry case
+            if (flattenedEntries.length === 1) {
+                const g = svg.append('g');
+                const entry = flattenedEntries[0];
+                const centerX = width / 2;
+                const centerY = height / 2;
+
+                const node = g.append('g')
+                    .attr('class', 'node')
+                    .attr('transform', 'translate(' + centerX + ', ' + centerY + ')')
+                    .style('cursor', 'pointer')
+                    .datum({entry})
+                    .on('click', (event, d) => selectEntry(d.entry.id));
+
+                if (entry.metadata?.type === 'image') {
+                    node.append('circle').attr('r', 12).attr('fill', '#f59e0b').attr('stroke', '#fff').attr('stroke-width', 2);
+                    node.append('rect').attr('x', -5).attr('y', -5).attr('width', 10).attr('height', 8).attr('fill', 'none').attr('stroke', '#fff').attr('stroke-width', 1.5).attr('rx', 1);
+                    node.append('circle').attr('cx', 2).attr('cy', -2).attr('r', 1.5).attr('fill', '#fff');
+                } else if (entry.metadata?.type === 'audio') {
+                    node.append('circle').attr('r', 12).attr('fill', '#10b981').attr('stroke', '#fff').attr('stroke-width', 2);
+                    node.append('polygon').attr('points', '-4,-6 -4,6 6,0').attr('fill', '#fff');
+                } else if (entry.metadata?.type === 'youtube') {
+                    node.append('rect').attr('x', -12).attr('y', -8).attr('width', 24).attr('height', 16).attr('fill', '#ff0000').attr('stroke', '#fff').attr('stroke-width', 2).attr('rx', 2);
+                    node.append('polygon').attr('points', '-4,-3 -4,3 3,0').attr('fill', '#fff');
+                } else if (entry.metadata?.type === 'spotify') {
+                    node.append('circle').attr('r', 12).attr('fill', '#1ed760').attr('stroke', '#fff').attr('stroke-width', 2);
+                    node.append('path').attr('d', 'M-3,-4 C-3,-5 -2,-6 0,-6 C2,-6 3,-5 3,-4 C3,-1 2,1 0,1 C-2,1 -3,-1 -3,-4 M0,1 L0,5 M-2,4 L2,4').attr('fill', '#fff').attr('stroke', '#fff').attr('stroke-width', 0.5);
+                } else {
+                    node.append('circle').attr('r', 8).attr('fill', '#3b82f6').attr('stroke', '#fff').attr('stroke-width', 2);
+                }
+
+                // Add text labels
+                node.append('text')
+                    .attr('x', 0)
+                    .attr('y', entry.metadata?.type === 'image' || entry.metadata?.type === 'youtube' ? 25 : 20)
+                    .attr('text-anchor', 'middle')
+                    .attr('font-size', '10px')
+                    .attr('fill', '#333')
+                    .style('pointer-events', 'none')
+                    .text(entry.data.substring(0, 20) + (entry.data.length > 20 ? '...' : ''));
+
+                return;
+            }
+
+            // Create scales using the pre-calculated positions
+            const xExtent = d3.extent(positions, d => d[0]);
+            const yExtent = d3.extent(positions, d => d[1]);
+
+            const xScale = d3.scaleLinear()
+                .domain(xExtent)
+                .range([100, width - 100]);
+
+            const yScale = d3.scaleLinear()
+                .domain(yExtent)
+                .range([100, height - 100]);
+
+            const g = svg.append('g');
+
+            const zoom = d3.zoom()
+                .scaleExtent([0.1, 10])
+                .on('zoom', (event) => {
+                    g.attr('transform', event.transform);
+                });
+
+            svg.call(zoom);
+
+            // Draw lines connecting comments to their parent entries
+            flattenedEntries.forEach((entry, entryIndex) => {
+                if (entry.parentId) {
+                    const parentIndex = flattenedEntries.findIndex(e => e.id === entry.parentId);
+                    if (parentIndex >= 0 && positions[parentIndex] && positions[entryIndex]) {
+                        const [parentX, parentY] = positions[parentIndex];
+                        const [commentX, commentY] = positions[entryIndex];
+
+                        g.append('line')
+                            .attr('x1', xScale(parentX))
+                            .attr('y1', yScale(parentY))
+                            .attr('x2', xScale(commentX))
+                            .attr('y2', yScale(commentY))
+                            .attr('stroke', '#94a3b8')
+                            .attr('stroke-width', 1)
+                            .attr('stroke-dasharray', '3,3')
+                            .attr('marker-end', 'url(#arrowhead)');
+                    }
+                }
+            });
+
+            // Draw nodes
+            const nodes = g.selectAll('.node')
+                .data(flattenedEntries.map((entry, i) => ({ entry, position: positions[i] })).filter(d => d.position))
+                .enter()
+                .append('g')
+                .attr('class', 'node')
+                .attr('transform', d => 'translate(' + xScale(d.position[0]) + ', ' + yScale(d.position[1]) + ')')
+                .style('cursor', 'pointer')
+                .on('click', (event, d) => selectEntry(d.entry.id))
+                .on('mouseenter', function(event, d) {
+                    d3.select(this).select('circle, rect').attr('stroke-width', 4);
+                    // Show tooltip
+                    const tooltip = d3.select('body').append('div')
+                        .attr('class', 'tooltip')
+                        .style('left', (event.pageX + 10) + 'px')
+                        .style('top', (event.pageY + 10) + 'px')
+                        .text(d.entry.data.substring(0, 100) + (d.entry.data.length > 100 ? '...' : ''));
+                })
+                .on('mouseleave', function() {
+                    d3.select(this).select('circle, rect').attr('stroke-width', 2);
+                    d3.selectAll('.tooltip').remove();
+                });
+
+            // Draw different node types
+            nodes.filter(d => !d.entry.metadata.type || d.entry.metadata.type === 'text')
+                .append('circle')
+                .attr('r', d => d.entry.parentId ? 6 : 8) // Smaller for comments
+                .attr('fill', '#3b82f6')
+                .attr('fill-opacity', d => d.entry.parentId ? 0.7 : 1) // More transparent for comments
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 2);
+
+            nodes.filter(d => d.entry.metadata.type === 'image')
+                .each(function(d) {
+                    const node = d3.select(this);
+                    node.append('circle').attr('r', d.entry.parentId ? 10 : 12).attr('fill', '#f59e0b').attr('fill-opacity', d.entry.parentId ? 0.7 : 1).attr('stroke', '#fff').attr('stroke-width', 2);
+                    node.append('rect').attr('x', -5).attr('y', -5).attr('width', 10).attr('height', 8).attr('fill', 'none').attr('stroke', '#fff').attr('stroke-width', 1.5).attr('rx', 1);
+                    node.append('circle').attr('cx', 2).attr('cy', -2).attr('r', 1.5).attr('fill', '#fff');
+                });
+
+            nodes.filter(d => d.entry.metadata.type === 'audio')
+                .each(function(d) {
+                    const node = d3.select(this);
+                    node.append('circle').attr('r', d.entry.parentId ? 10 : 12).attr('fill', '#10b981').attr('fill-opacity', d.entry.parentId ? 0.7 : 1).attr('stroke', '#fff').attr('stroke-width', 2);
+                    node.append('polygon').attr('points', d.entry.parentId ? '-3,-4 -3,4 4,0' : '-4,-6 -4,6 6,0').attr('fill', '#fff');
+                });
+
+            nodes.filter(d => d.entry.metadata.type === 'youtube')
+                .each(function(d) {
+                    const node = d3.select(this);
+                    node.append('rect').attr('x', d.entry.parentId ? -10 : -12).attr('y', d.entry.parentId ? -6 : -8).attr('width', d.entry.parentId ? 20 : 24).attr('height', d.entry.parentId ? 12 : 16).attr('fill', '#ff0000').attr('fill-opacity', d.entry.parentId ? 0.7 : 1).attr('stroke', '#fff').attr('stroke-width', 2).attr('rx', 2);
+                    node.append('polygon').attr('points', d.entry.parentId ? '-3,-2 -3,2 2,0' : '-4,-3 -4,3 3,0').attr('fill', '#fff');
+                });
+
+            nodes.filter(d => d.entry.metadata.type === 'spotify')
+                .each(function(d) {
+                    const node = d3.select(this);
+                    node.append('circle').attr('r', d.entry.parentId ? 10 : 12).attr('fill', '#1ed760').attr('fill-opacity', d.entry.parentId ? 0.7 : 1).attr('stroke', '#fff').attr('stroke-width', 2);
+                    node.append('path').attr('d', d.entry.parentId ? 'M-2,-3 C-2,-4 -1,-5 0,-5 C1,-5 2,-4 2,-3 C2,-1 1,0 0,0 C-1,0 -2,-1 -2,-3 M0,0 L0,4 M-1,3 L1,3' : 'M-3,-4 C-3,-5 -2,-6 0,-6 C2,-6 3,-5 3,-4 C3,-1 2,1 0,1 C-2,1 -3,-1 -3,-4 M0,1 L0,5 M-2,4 L2,4').attr('fill', '#fff').attr('stroke', '#fff').attr('stroke-width', 0.5);
+                });
+
+            // Add text labels
+            nodes.append('text')
+                .attr('x', 0)
+                .attr('y', d => {
+                    if (d.entry.metadata?.type === 'image' || d.entry.metadata?.type === 'youtube') {
+                        return d.entry.parentId ? 22 : 25;
+                    }
+                    return d.entry.parentId ? 18 : 20;
+                })
+                .attr('text-anchor', 'middle')
+                .attr('font-size', '10px')
+                .attr('fill', '#333')
+                .style('pointer-events', 'none')
+                .text(d => d.entry.data.substring(0, 20) + (d.entry.data.length > 20 ? '...' : ''));
+        }
+
+        // Initialize visualization
+        window.addEventListener('load', () => {
+            createVisualization();
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            createVisualization();
+        });
+    </script>
+</body>
+</html>`;
+
+      // Create and download the file
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${collection}-export.html`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      onClose()
+    } catch (error) {
+      console.error('Export failed:', error)
+      alert('Failed to export HTML. Please try again.')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
 
   if (!isOpen) return null
 
@@ -433,16 +1037,28 @@ export default function SettingsModal({
             Admin
           </button>
           {isAdmin && (
-            <button
-              onClick={() => setActiveTab('upload')}
-              className={`px-4 py-2 font-medium ${
-                activeTab === 'upload'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-muted-foreground hover:text-card-foreground'
-              }`}
-            >
-              Add Entry
-            </button>
+            <>
+              <button
+                onClick={() => setActiveTab('upload')}
+                className={`px-4 py-2 font-medium ${
+                  activeTab === 'upload'
+                    ? 'border-b-2 border-blue-600 text-blue-600'
+                    : 'text-muted-foreground hover:text-card-foreground'
+                }`}
+              >
+                Add Entry
+              </button>
+              <button
+                onClick={() => setActiveTab('export')}
+                className={`px-4 py-2 font-medium ${
+                  activeTab === 'export'
+                    ? 'border-b-2 border-blue-600 text-blue-600'
+                    : 'text-muted-foreground hover:text-card-foreground'
+                }`}
+              >
+                Export HTML
+              </button>
+            </>
           )}
         </div>
 
@@ -669,6 +1285,51 @@ export default function SettingsModal({
             </div>
           )}
 
+
+          {/* Export HTML Tab */}
+          {activeTab === 'export' && isAdmin && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-medium text-card-foreground mb-4">Export Collection as HTML</h3>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Export the current graph visualization, ledger table, and entry sidebar to a self-contained HTML file that can be downloaded and shared.
+                </p>
+
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg mb-6">
+                  <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">What's included:</h4>
+                  <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+                    <li>• Interactive graph visualization with current node positions</li>
+                    <li>• Ledger table with all entries</li>
+                    <li>• Entry details sidebar</li>
+                    <li>• QR code linking back to source URL</li>
+                  </ul>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-muted rounded">
+                    <div>
+                      <p className="font-medium text-card-foreground">Collection: {collection}</p>
+                      <p className="text-sm text-muted-foreground">{entries.length} entries to export</p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleExportHTML}
+                    disabled={isExporting || entries.length === 0}
+                    className="w-full px-4 py-3 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
+                  >
+                    {isExporting ? 'Generating HTML...' : `Export ${collection} as HTML`}
+                  </button>
+
+                  {entries.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center">
+                      No entries to export. Add some entries first.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Upload Tab */}
           {activeTab === 'upload' && isAdmin && (

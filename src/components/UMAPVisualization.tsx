@@ -345,6 +345,16 @@ function UMAPVisualization({
     return applyUMAPPositioning(allEntries)
   }, [entries.length, entryIds, commentCounts, applyUMAPPositioning]) // Recalculate when entries, IDs, or comments change
 
+  // Always expose current UMAP positions to window for export functionality
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).getCurrentUMAPPositions = () => {
+        console.log('getCurrentUMAPPositions called, returning', positionedEntries.length, 'entries')
+        return positionedEntries
+      }
+    }
+  }, [positionedEntries]) // Update whenever positionedEntries changes
+
   useEffect(() => {
     if (!svgRef.current || !positionedEntries.length || !dimensions.width) return
 

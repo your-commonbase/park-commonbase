@@ -254,6 +254,7 @@ export default function Home() {
           onCreateCollection={handleCreateCollection}
           onAddEntry={handleAddEntry}
           isAddingEntry={false}
+          entries={[]}
         />
       )}
     </div>

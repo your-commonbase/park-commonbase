@@ -449,6 +449,7 @@ export default function CollectionPage() {
         onCreateCollection={handleCreateCollection}
         onAddEntry={handleAddEntry}
         isAddingEntry={isAddingEntry}
+        entries={entries}
       />
     </div>
   )
