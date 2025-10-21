@@ -6,6 +6,11 @@ import SpotifyEmbed from './SpotifyEmbed'
 import YouTubeEmbed from './YouTubeEmbed'
 import { Entry } from '@/types'
 
+// Helper to highlight ==text== with <mark>
+function highlightMarked(text: string): string {
+  return text.replace(/==([^=]+)==/g, '<mark>$1</mark>');
+}
+
 interface SidebarProps {
   entry: Entry | null
   isOpen: boolean
@@ -200,7 +205,10 @@ export default function Sidebar({
                  entry.metadata.type === 'spotify' ? 'Track/Playlist:' :
                  'Content:'}
               </h3>
-              <p className="text-foreground whitespace-pre-wrap">{entry.data}</p>
+              <p
+                className="text-foreground whitespace-pre-wrap"
+                dangerouslySetInnerHTML={{ __html: highlightMarked(entry.data) }}
+              />
             </div>
           )}
 
@@ -305,7 +313,10 @@ export default function Sidebar({
                     </div>
                   )}
 
-                  <p className="text-sm text-foreground mb-1">{comment.data}</p>
+                  <p
+                    className="text-sm text-foreground mb-1"
+                    dangerouslySetInnerHTML={{ __html: highlightMarked(comment.data) }}
+                  />
                   <p className="text-xs text-muted-foreground">
                     {new Date(comment.createdAt).toLocaleString()}
                   </p>

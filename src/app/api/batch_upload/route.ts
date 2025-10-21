@@ -24,14 +24,50 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'CSV data is required' }, { status: 400 })
     }
 
-    // Parse CSV data
+    // Parse CSV data with proper handling of quoted fields
+    function parseCSVLine(line: string): string[] {
+      const result: string[] = []
+      let current = ''
+      let inQuotes = false
+      let i = 0
+
+      while (i < line.length) {
+        const char = line[i]
+        const nextChar = line[i + 1]
+
+        if (char === '"') {
+          if (inQuotes && nextChar === '"') {
+            // Escaped quote
+            current += '"'
+            i += 2
+          } else {
+            // Toggle quote state
+            inQuotes = !inQuotes
+            i++
+          }
+        } else if (char === ',' && !inQuotes) {
+          // End of field
+          result.push(current.trim())
+          current = ''
+          i++
+        } else {
+          current += char
+          i++
+        }
+      }
+
+      // Add the last field
+      result.push(current.trim())
+      return result
+    }
+
     const lines = csvData.trim().split('\n')
     if (lines.length < 2) {
       return NextResponse.json({ error: 'CSV must have at least a header and one data row' }, { status: 400 })
     }
 
     // Parse header
-    const header = lines[0].split(',').map((col: string) => col.trim().toLowerCase())
+    const header = parseCSVLine(lines[0]).map((col: string) => col.toLowerCase())
     const dataIndex = header.indexOf('data')
     const authorIndex = header.indexOf('author')
 
@@ -44,7 +80,7 @@ export async function POST(request: NextRequest) {
 
     // Process each row
     for (let i = 1; i < lines.length; i++) {
-      const row = lines[i].split(',').map((cell: string) => cell.trim())
+      const row = parseCSVLine(lines[i])
 
       if (row.length < header.length) {
         errors.push(`Row ${i + 1}: Not enough columns`)
